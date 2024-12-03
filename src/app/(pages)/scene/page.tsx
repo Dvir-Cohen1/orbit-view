@@ -1,7 +1,11 @@
 import ParticleRing from '@/components/common/ParticleRing'
 import SolarSystem from '@/components/SolarSystem'
-import { Button } from '@/components/ui/button'
+import { Metadata } from 'next';
 import React from 'react'
+
+export const metadata: Metadata = {
+     title: 'The Solar System - OrbitView',
+ };
 
 const ScenePage = () => {
      return (

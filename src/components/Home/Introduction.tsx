@@ -30,7 +30,7 @@ const Introduction: React.FC = () => {
                         <Button
                             size={'lg'}
                             onClick={() => router.push('/scene')}
-                            title="Get quote now"
+                            title="Start Exploring"
                             className="relative mt-10 inline-flex items-center justify-center px-8 py-7 text-lg font-bold text-white transition-all duration-200 bg-gray-900 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
                             role="button"
                         >
