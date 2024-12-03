@@ -18,7 +18,7 @@ const Introduction: React.FC = () => {
             >
                 <div className='max-w-2xl space-y-6 text-center z-10'>
                     <h1><TextShadow title="OrbitView" coloredTitle='.' /> </h1>
-                    <h4 className=''>Explore the cosmos, one <span className='text-[var(--blue)]'>🌍 orbit</span> at a time.</h4>
+                    <h4 className=''>Explore the cosmos, one <span className='text-[var(--blue)]'>orbit</span> at a time.</h4>
                     <p className='text-xl'>
                         A 3D solar system simulation built with React and Three.js, bringing the wonders of space to your screen.
                     </p>
@@ -34,7 +34,7 @@ const Introduction: React.FC = () => {
                             className="relative mt-10 inline-flex items-center justify-center px-8 py-7 text-lg font-bold text-white transition-all duration-200 bg-gray-900 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
                             role="button"
                         >
-                          🌌  Start Exploring
+                           🪐 Start Exploring 
                         </Button>
                     </div>
 
