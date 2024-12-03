@@ -1,15 +1,3 @@
-import {
-    IntroductionButton,
-} from '../../globals';
-
-// App Navigation Links
-// export const SECTION_CATEGORIES = [
-//     { title: 'About', href: '#About' },
-//     { title: 'Projects', href: '#Projects' },
-//     { title: 'Services', href: '#Services' },
-//     { title: 'Contact', href: '#Contact' },
-//     { title: 'MyStack', href: '#MyStack' },
-// ];
 
 // Mobile Menu
 export const ANIMATED_HAMBURGER_BUTTON_VARIANTS = {
