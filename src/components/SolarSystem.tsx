@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment, Text, TrackballControls } from '@react-three/drei';
 import { Mesh } from 'three';
+import Sun from './Sun';
 // import Sun from '../Sun';
 // import Saturn from '../Saturn';
 // import Jupiter from '../Jupiter';
@@ -44,15 +45,15 @@ const SolarSystemScene = () => {
 
      useFrame(() => {
           if (sunRef.current) {
-               sunRef.current.rotation.y += 0.01; // Sun rotation
+               sunRef.current.rotation.y += 0.005; // Sun rotation
           }
      });
 
      return (
           <>
                {/* Sun */}
-               <mesh ref={sunRef} position={[0, 0, 0]} scale={[15, 15, 15]}>
-                    {/* <Sun /> */}
+               <mesh ref={sunRef} position={[0, 0, 0]} scale={[5, 5, 5]}>
+                    <Sun />
                </mesh>
 
                {/* Planets */}
