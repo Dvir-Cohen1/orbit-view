@@ -4,30 +4,28 @@ import anime from 'animejs';
 
 const WaterDropGrid = () => {
     return (
-        <div className='relative grid place-content-center  px-8 py-12'>
-            <DotGrid />
-        </div>
+        <DotGrid />
     );
 };
 
-const GRID_WIDTH = 25;
-const GRID_HEIGHT = 20;
+const GRID_WIDTH = 55;
+const GRID_HEIGHT = 35;
 
 const DotGrid = () => {
     const handleDotClick = (e: any) => {
         anime({
             targets: '.dot-point',
             scale: [
-                { value: 1.35, easing: 'easeOutSine', duration: 250 },
-                { value: 1, easing: 'easeInOutQuad', duration: 500 },
+                { value: 1.35, easing: 'easeOutSine', duration: 150 },
+                { value: 1, easing: 'easeInOutQuad', duration: 400 },
             ],
             translateY: [
-                { value: -15, easing: 'easeOutSine', duration: 250 },
-                { value: 0, easing: 'easeInOutQuad', duration: 500 },
+                { value: -15, easing: 'easeOutSine', duration: 150 },
+                { value: 0, easing: 'easeInOutQuad', duration: 400 },
             ],
             opacity: [
-                { value: 1, easing: 'easeOutSine', duration: 250 },
-                { value: 0.5, easing: 'easeInOutQuad', duration: 500 },
+                { value: 1, easing: 'easeOutSine', duration: 150 },
+                { value: 0.5, easing: 'easeInOutQuad', duration: 400 },
             ],
             delay: anime.stagger(100, {
                 grid: [GRID_WIDTH, GRID_HEIGHT],
@@ -48,7 +46,7 @@ const DotGrid = () => {
                     key={`${i}-${j}`}
                 >
                     <div
-                        className='dot-point h-2 w-2 rounded-full bg-gradient-to-b from-slate-200 to-slate-400 opacity-50 group-hover:from-indigo-600 group-hover:to-white'
+                        className='dot-point h-2 w-2 rounded-full bg-gradient-to-b from-transparent to-slate-400 opacity-50 group-hover:from-indigo-600 group-hover:to-white'
                         data-index={index}
                     />
                 </div>

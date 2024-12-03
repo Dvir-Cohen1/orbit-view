@@ -32,14 +32,6 @@ const TextShadow = React.memo(
         return (
             <motion.div
                 id='text'
-                className='flex justify-center md:justify-start'
-                style={{
-                    color: '#fff',
-                    // fontFamily: 'Glory, sans-serif',
-                    // fontSize: '110px',
-                    fontWeight: 800,
-                    // letterSpacing: '4px',
-                }}
                 initial={{
                     textShadow: `${-x}px ${-y}px 100px var(--${shadowColor}),${-2 * x}px ${-2 * y}px 300px var(--${shadowColor}),
                    ${-4 * x}px ${-4 * y}px 250px var(--${shadowColor})`,
@@ -51,8 +43,10 @@ const TextShadow = React.memo(
                 }}
                 transition={{ ease: 'easeOut', duration: 0.2 }}
             >
-                <h1 className='text-primary-text'>{title}</h1>
-                <span className={`text-[var(--${shadowColor})]`}>{coloredTitle}</span>
+                <div className='flex justify-center'>
+                    <h1 className='text-primary-text'>{title}</h1>
+                    <span className={`text-[var(--${shadowColor})]`}>{coloredTitle}</span>
+                </div>
             </motion.div>
         );
     }

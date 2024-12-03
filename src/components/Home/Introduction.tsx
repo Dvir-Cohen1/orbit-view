@@ -2,49 +2,46 @@
 import React from 'react';
 import TextShadow from '../common/TextShadow';
 import InViewAnimation from '../common/InViewAnimation';
-import Link from 'next/link';
-import socialLinks from '../common/socialLinks';
 import SectionComponent from '../common/SectionComponent';
 import WaterDropGrid from '../common/WaterDropGrid';
+import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
 
 const Introduction: React.FC = () => {
+    const router = useRouter()
+
     return (
         <InViewAnimation>
             <SectionComponent
                 id='About'
                 className='relative md:flex justify-center place-items-center'
             >
-                <div className='max-w-xl space-y-6 text-center md:text-start'>
+                <div className='max-w-2xl space-y-6 text-center z-10'>
                     <h1><TextShadow title="OrbitView" coloredTitle='.' /> </h1>
-                    <h4>Explore the cosmos, one <span className='text-[var(--blue)]'>orbit</span> at a time.</h4>
+                    <h4 className=''>Explore the cosmos, one <span className='text-[var(--blue)]'>orbit</span> at a time.</h4>
                     <p className='text-xl'>
                         A 3D solar system simulation built with React and Three.js, bringing the wonders of space to your screen.
                     </p>
 
-                    <Link
-                        href='/scene'
-                        className={`mt-4 w-fit rounded text-white bg-[var(--blue)] px-7 py-2 text-sm shadow-[3px_3px_0px_black] shadow-[#cee0fb] dark:shadow-[#2b3b53] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none md:mt-2`}
-                    >
-                        Start Exploring
-                    </Link>
-
-                    <div className='flex flex-wrap justify-center space-x-8 md:justify-start'>
-                        {socialLinks.map((item, index) => (
-                            <a
-                                target='_blank'
-                                key={index}
-                                href={item.href}
-                                title={item.title}
-                                aria-label={item.title}
-                            >
-                                {item.icon}
-                            </a>
-                        ))}
+                    <div className="relative inline-flex group">
+                        <div
+                            className="absolute mt-10 transition-all duration-1000 opacity-70 -inset-px bg-gradient-to-r from-[#44BCFF] to-[#FF675E] rounded-xl blur-lg group-hover:opacity-100 group-hover:-inset-1 group-hover:duration-200 animate-tilt"
+                        ></div>
+                        <Button
+                            size={'lg'}
+                            onClick={() => router.push('/scene')}
+                            title="Get quote now"
+                            className="relative mt-10 inline-flex items-center justify-center px-8 py-7 text-lg font-bold text-white transition-all duration-200 bg-gray-900 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+                            role="button"
+                        >
+                            Start Exploring
+                        </Button>
                     </div>
+
                 </div>
-                <div className='hidden md:block'>
+                {/* <div className='hidden md:block absolute'>
                     <WaterDropGrid />
-                </div>
+                </div> */}
             </SectionComponent>
         </InViewAnimation>
     );

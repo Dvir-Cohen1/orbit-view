@@ -32,22 +32,3 @@ export const ANIMATED_HAMBURGER_BUTTON_VARIANTS = {
         },
     },
 };
-
-
-export const FOOTER_LINKS = [
-    {
-        label: 'Terms',
-        href: 'https://docs.github.com/site-policy/github-terms/github-terms-of-service',
-        analyticsEvent: '{"category":"Footer","action":"go to terms","label":"text:terms"}',
-    },
-    {
-        label: 'Privacy',
-        href: 'https://docs.github.com/site-policy/privacy-policies/github-privacy-statement',
-        analyticsEvent: '{"category":"Footer","action":"go to privacy","label":"text:privacy"}',
-    },
-    {
-        label: 'Sitemap',
-        href: '/sitemap',
-        analyticsEvent: '{"category":"Footer","action":"go to sitemap","label":"text:sitemap"}',
-    },
-];
