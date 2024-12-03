@@ -1,0 +1,19 @@
+{
+    "extends": ["next/core-web-vitals", "next", "prettier"],
+    "plugins": ["prettier"],
+    "rules": {
+        "prettier/prettier": "error", // Enforce Prettier rules
+        "no-console": "error",
+        "no-debugger": "error",
+        "no-empty-function": "error",
+        "no-eval": "error",
+        "arrow-parens": ["error", "always"], // Enforce parentheses around a single arrow function parameter
+        "print-width": ["error", 100], // Specify the line length that Prettier will wrap on
+        "bracket-spacing": ["error", "always"], // Print spaces between brackets in object literals
+        "jsx-bracket-same-line": ["error", { "singleLine": false, "multiline": true }], // Place > on the last line instead of being alone on the next line (JSX)
+        "quote-props": ["error", "as-needed"], // Only add quotes around object properties where required
+        "use-tabs": "error", // Disallow tabs for indentation
+        "prose-wrap": ["error", "always"], // Wrap prose (such as markdown) whenever it exceeds the print width
+        "html-whitespace-sensitivity": ["error", "ignore"] // Controls whether Prettier respects HTML whitespace rules
+    }
+}

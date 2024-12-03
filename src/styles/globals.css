@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+
+        --radius: 0.5rem;
+
+        /* Colors */
+        --border: #2d333a;
+        /* --main-bg: #080808; */
+        --main-bg: #ffffff;
+        /* --card-bg: #171717; */
+        --card-bg: #161b22;
+        --card-bg-transparent: #ffffff16;
+        --blue: #0078d7;
+        --blue-transparent: #0076d750;
+        --purple: #7c73ff;
+        --green: #3fb950;
+        --teal: #33b3ae;
+        --pink: #a95684;
+        --description: #94a3b8;
+
+        /* Text */
+        --text-foreground: #161b22;
+        /* cards */
+        --card-orange: #ff6b00;
+        --card-blue: #146ef5;
+        --card-pink: #ed52cb;
+        --card-green: #08d023;
+        --card-red: #ee1d36;
+    }
+
+    .dark {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+
+        --primary: 222.2 47.4% 11.2%;
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 222.2 84% 4.9%;
+
+        --radius: 0.5rem;
+
+        /* Colors */
+        --border: #2d333a;
+        /* --main-bg: #080808; */
+        --main-bg: #0d1117;
+        /* --card-bg: #171717; */
+        --card-bg: #161b22;
+        --card-bg-transparent: #ffffff16;
+        --blue: #0078d7;
+        --blue-transparent: #0076d750;
+        --purple: #7c73ff;
+        --green: #3fb950;
+        --teal: #33b3ae;
+        --pink: #a95684;
+        --description: #94a3b8;
+
+        /* Text */
+        --text-foreground: #fff;
+
+        /* cards */
+        --card-orange: #ff6b00;
+        --card-blue: #146ef5;
+        --card-pink: #ed52cb;
+        --card-green: #08d023;
+        --card-red: #ee1d36;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+
+    h1 {
+        @apply text-5xl font-extrabold md:text-8xl;
+    }
+
+    h2 {
+        @apply text-4xl font-bold md:text-6xl;
+    }
+
+    h3 {
+        @apply text-2xl font-bold md:text-4xl;
+    }
+
+    h4 {
+        @apply text-2xl font-bold;
+    }
+}
+
+:root {
+    /* Text */
+    --text-color: #fff;
+    --text-blue: #38bdf8;
+    --text-blue-hover: #3bc4ff;
+
+    /* Backgorund */
+    --foreground-bg: #0a101e;
+    --background-bg: #070d1b;
+}
+
+@media (prefers-color-scheme: dark) {
+    /* :root {} */
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--main-bg);
+    color: var(--text-color);
+}
+
+/* Scroll Bar */
+
+/* width */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #f1f1f10d;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}

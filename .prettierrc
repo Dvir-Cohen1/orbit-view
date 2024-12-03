@@ -1,0 +1,25 @@
+{
+    "trailingComma": "es5",
+    "semi": true,
+    "tabWidth": 4,
+    "singleQuote": true,
+    "jsxSingleQuote": true,
+    "endOfLine": "auto",
+    "arrowParens": "always",
+    "printWidth": 100,
+    "bracketSpacing": true,
+    "jsxBracketSameLine": false,
+    "quoteProps": "as-needed",
+    "useTabs": false,
+    "proseWrap": "always",
+    "htmlWhitespaceSensitivity": "ignore",
+    "plugins": ["prettier-plugin-tailwindcss"],
+    "overrides": [
+        {
+            "files": ["*.mjs"],
+            "options": {
+                "parser": "babel"
+            }
+        }
+    ]
+}
