@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment, Text, TrackballControls } from '@react-three/drei';
 import { Mesh } from 'three';
 import Sun from './Sun';
 import * as THREE from 'three';
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 
 // import Sun from '../Sun';
 // import Saturn from '../Saturn';
@@ -17,7 +18,7 @@ const SolarSystem = () => {
           <div className="relative">
                <Canvas
                     camera={{ near: 0.1, position: [0, 0, 500], fov: 65 }}
-                    gl={{ toneMappingExposure: 0.5 }} // Adjust exposure to dim the scene
+                    // gl={{ toneMappingExposure: 0.5 }} // Adjust exposure to dim the scene
 
                     fallback={<div>Sorry no WebGL supported!</div>}
                     style={{ height: '100vh' }}
@@ -25,6 +26,18 @@ const SolarSystem = () => {
                     // dpr={[1, 2]} camera={{ position: [0, 0, 35], fov: 90 }}
                     shadows // Enable shadows globally
                >
+
+
+                    {/* GLOW */}
+                    {/* <color attach="background" args={['#111']} /> */}
+                    {/* <ambientLight /> */}
+                    <EffectComposer enableNormalPass>
+                         <Bloom mipmapBlur luminanceThreshold={1} levels={9} intensity={1.50} />
+                         <ToneMapping />
+                    </EffectComposer>
+                    {/* <Shape color="white" position={[-2, 0, 0]} scale={[50, 50, 50]}>
+                         <planeGeometry args={[1.5, 1.5]} />
+                    </Shape> */}
 
                     {/* Lights */}
                     <ambientLight intensity={0.1} />
@@ -37,7 +50,7 @@ const SolarSystem = () => {
                     />
 
                     {/* Background */}
-                    <BackgroundSphere texturePath="/solar-system.jpg" />
+                    <BackgroundSphere texturePath="/solar-system.png" />
 
                     {/* Stars */}
                     <Stars radius={200} depth={80} count={5000} factor={5} />
@@ -80,9 +93,11 @@ const SolarSystemScene = () => {
 
      return (
           <>
-               {/* Sun */}
-               <mesh ref={sunRef} position={[0, 0, 0]} scale={[5, 5, 5]}>
-                    <Sun />
+
+               {/* <Sun  /> */}
+               <mesh ref={sunRef} position={[0, 0, 0]} scale={[1, 1, 1]}>
+                    <sphereGeometry args={[20, 20, 20]} />
+                    <meshStandardMaterial color={'yellow'} emissive={'white'} emissiveIntensity={3} />
                </mesh>
 
                {/* Planets */}
@@ -130,3 +145,18 @@ const Planet: React.FC<PlanetProps> = ({ name, radius, distance, speed, color, c
 };
 
 export default SolarSystem;
+
+
+// function Shape({ children, color, ...props }: any) {
+//      const [hovered, hover] = useState(true)
+//      return (
+//           <mesh {...props}>
+//                {children}
+//                {/* In order to get selective bloom we must crank colors out of
+//            their 0-1 spectrum. We push them way out of range. What previously was [1, 1, 1] now could
+//            for instance be [10, 10, 10]. */}
+//                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={5} />
+//           </mesh>
+
+//      )
+// }

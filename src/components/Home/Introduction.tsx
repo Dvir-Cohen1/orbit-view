@@ -41,9 +41,9 @@ const Introduction: React.FC = () => {
 
                 </div>
 
-                <div className='hidden md:block absolute'>
+                {/* <div className='hidden md:block absolute'>
                     <WaterDropGrid />
-                </div>
+                </div> */}
             </SectionComponent>
         </InViewAnimation>
     );
