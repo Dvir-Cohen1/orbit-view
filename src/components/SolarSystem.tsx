@@ -5,6 +5,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment, Text, TrackballControls } from '@react-three/drei';
 import { Mesh } from 'three';
 import Sun from './Sun';
+import * as THREE from 'three';
+
 // import Sun from '../Sun';
 // import Saturn from '../Saturn';
 // import Jupiter from '../Jupiter';
@@ -14,29 +16,56 @@ const SolarSystem = () => {
      return (
           <div className="relative">
                <Canvas
+                    camera={{ near: 0.1, position: [0, 0, 500], fov: 65 }}
+                    gl={{ toneMappingExposure: 0.5 }} // Adjust exposure to dim the scene
+
                     fallback={<div>Sorry no WebGL supported!</div>}
                     style={{ height: '100vh' }}
-                    camera={{ position: [50, 0, 50], fov: 75 }}
+                    // camera={{ position: [50, 0, 50], fov: 75 }}
                     // dpr={[1, 2]} camera={{ position: [0, 0, 35], fov: 90 }}
                     shadows // Enable shadows globally
                >
+
+                    {/* Lights */}
                     <ambientLight intensity={0.1} />
-                    {/* Point light acts as the sun */}
                     <pointLight
-                         position={[0, 0, 0]} // Position at the Sun's location
-                         intensity={1} // Adjust the intensity as needed
+                         position={[0, 0, 0]} // Sun's position
+                         intensity={100}
                          castShadow
                          shadow-mapSize-width={1024}
                          shadow-mapSize-height={1024}
-                         shadow-radius={100}
+                    />
+
+                    {/* Background */}
+                    <BackgroundSphere texturePath="/solar-system.jpg" />
+
+                    {/* Stars */}
+                    <Stars radius={200} depth={80} count={5000} factor={5} />
+
+                    {/* Solar System Scene */}
+                    <SolarSystemScene />
+                    {/* Orbit Controls */}
+                    <OrbitControls
+                         makeDefault
+                         // dollySpeed={0.1}
+                         maxDistance={1500}
+                         minDistance={50}
+                         target={[2, -2, 0]}
                     />
                     <Environment preset="night" />
-                    <Stars radius={200} depth={180} count={5000} factor={4} />
-                    <SolarSystemScene />
-                    <OrbitControls />
-                    <TrackballControls />
                </Canvas>
           </div>
+     );
+};
+
+const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
+     const texture = new THREE.TextureLoader().load(texturePath);
+
+     return (
+          <mesh>
+               <sphereGeometry args={[500, 120, 40]} />
+               <meshBasicMaterial map={texture} side={THREE.BackSide} />
+          </mesh>
      );
 };
 

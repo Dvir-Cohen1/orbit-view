@@ -6,6 +6,7 @@ import SectionComponent from '../common/SectionComponent';
 import WaterDropGrid from '../common/WaterDropGrid';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
+import TiltCard from '../common/TiltCard';
 
 const Introduction: React.FC = () => {
     const router = useRouter()
@@ -39,9 +40,10 @@ const Introduction: React.FC = () => {
                     </div>
 
                 </div>
-                {/* <div className='hidden md:block absolute'>
+
+                <div className='hidden md:block absolute'>
                     <WaterDropGrid />
-                </div> */}
+                </div>
             </SectionComponent>
         </InViewAnimation>
     );
