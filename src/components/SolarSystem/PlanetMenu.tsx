@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { PLANETS } from './SolarSystem';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type PlanetMenuProps = {
     isPlanetMenuOpen: boolean;
@@ -77,27 +76,14 @@ const PlanetMenu = ({
                 className='absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5'
             >
                 {/* Planet Menu Toggle Button */}
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger>
-                            <button
-                                aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
-                                aria-expanded={isPlanetMenuOpen}
-                                className='rounded bg-slate-800/35 p-3 hover:bg-slate-800/50 focus:outline-none'
-                                onClick={handleToggleMenu}
-                            >
-                                {isPlanetMenuOpen ? (
-                                    <FaChevronDown size={15} />
-                                ) : (
-                                    <FaChevronUp size={15} />
-                                )}
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                <button
+                    aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
+                    aria-expanded={isPlanetMenuOpen}
+                    className='rounded bg-slate-800/35 p-3 hover:bg-slate-800/50 focus:outline-none'
+                    onClick={handleToggleMenu}
+                >
+                    {isPlanetMenuOpen ? <FaChevronDown size={15} /> : <FaChevronUp size={15} />}
+                </button>
 
                 {/* Planet Menu */}
                 {isPlanetMenuOpen && (
