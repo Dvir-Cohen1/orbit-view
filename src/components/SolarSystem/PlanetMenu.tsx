@@ -51,7 +51,7 @@ const PlanetMenu = ({
                     className='rounded-full bg-slate-800/35 p-4 hover:bg-slate-800/50 focus:outline-none'
                     onClick={handleToggleMenu}
                 >
-                    {isPlanetMenuOpen ? <FaChevronDown /> : <FaChevronUp />}
+                    {isPlanetMenuOpen ? <FaChevronDown size={15} /> : <FaChevronUp size={15} />}
                 </button>
 
                 {/* Planet Menu */}
@@ -66,8 +66,8 @@ const PlanetMenu = ({
                                 onClick={() => handlePlanetSelect(planet.name)}
                             >
                                 <img
-                                    width={30}
-                                    height={30}
+                                    width={25}
+                                    height={25}
                                     src={planet.icon}
                                     alt={`${planet.name} icon`}
                                     className='rounded-full'
