@@ -1,5 +1,5 @@
 import ParticleRing from '@/components/common/ParticleRing'
-import SolarSystem from '@/components/SolarSystem'
+import SolarSystem from '@/components/SolarSystem/SolarSystem'
 import { Metadata } from 'next';
 import React from 'react'
 

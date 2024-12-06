@@ -19,7 +19,7 @@ export default function RootLayout({
             <NavigationProvider>
                 <Header />
                 <main>{children}</main>
-                <Footer />
+                {/* <Footer /> */}
             </NavigationProvider>
         </body >
     );
