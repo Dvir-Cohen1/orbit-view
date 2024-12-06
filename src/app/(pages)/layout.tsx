@@ -17,7 +17,7 @@ export default function RootLayout({
     return (
         <body className={`${theme} flex min-h-screen flex-col justify-between text-primary-text`}>
             <NavigationProvider>
-                <Header />
+                {/* <Header /> */}
                 <main>{children}</main>
                 {/* <Footer /> */}
             </NavigationProvider>
