@@ -18,7 +18,7 @@ export const PLANETS = [
         distance: 30,
         speed: 1,
         color: 'gray',
-        details: 'Smallest planet in our solar system',
+        details: 'The smallest and fastest planet in our solar system, closest to the Sun.',
         icon: '/planets/mercury.png',
     },
     {
@@ -27,7 +27,7 @@ export const PLANETS = [
         distance: 50,
         speed: 0.5,
         color: 'orange',
-        details: 'Known as Earth’s twin',
+        details: 'The second planet from the Sun, known for its extreme heat and thick atmosphere.',
         icon: '/planets/venus.png',
     },
     {
@@ -36,7 +36,7 @@ export const PLANETS = [
         distance: 80,
         speed: 0.3,
         color: 'blue',
-        details: 'Home to life',
+        details: 'Our home planet, the only known planet to support life.',
         icon: '/planets/earth.png',
     },
     {
@@ -45,7 +45,7 @@ export const PLANETS = [
         distance: 100,
         speed: 0.25,
         color: 'red',
-        details: 'The Red Planet',
+        details: 'The Red Planet, known for its iron oxide-rich soil.',
         icon: '/planets/mars.png',
     },
     {
@@ -53,7 +53,7 @@ export const PLANETS = [
         radius: 4,
         distance: 150,
         speed: 0.1,
-        details: 'Largest planet in our solar system',
+        details: 'The largest planet in our solar system, a gas giant with a Great Red Spot.',
         icon: '/planets/jupiter.png',
     },
     {
@@ -63,7 +63,7 @@ export const PLANETS = [
         speed: 0.09,
         color: 'goldenrod',
         hasRings: true,
-        details: 'Famous for its rings',
+        details: 'Known for its prominent ring system, Saturn is the second-largest planet.',
         icon: '/planets/saturn.png',
     },
     {
@@ -72,7 +72,7 @@ export const PLANETS = [
         distance: 250,
         speed: 0.08,
         color: 'lightblue',
-        details: 'It rotates on its side',
+        details: 'The planet with a unique sideways rotation and faint ring system.',
         icon: '/planets/uranus.png',
     },
     {
@@ -81,7 +81,7 @@ export const PLANETS = [
         distance: 300,
         speed: 0.07,
         color: 'blue',
-        details: 'The farthest planet',
+        details: 'The most distant planet from the Sun, known for its deep blue color.',
         icon: '/planets/neptune.png',
     },
     {
@@ -90,7 +90,7 @@ export const PLANETS = [
         distance: 350,
         speed: 0.05,
         color: 'white',
-        details: 'Dwarf planet',
+        details: 'Once considered the ninth planet, Pluto is now classified as a dwarf planet.',
         icon: '/planets/pluto.png',
     },
 ];
