@@ -1,11 +1,8 @@
 'use client';
-
 import React, { useState, useRef, useMemo } from 'react';
-import { Canvas, useFrame, useThree, extend } from '@react-three/fiber';
+import { Canvas, useFrame, } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import PlanetMenu from './PlanetMenu';
 
 // Utility to load textures

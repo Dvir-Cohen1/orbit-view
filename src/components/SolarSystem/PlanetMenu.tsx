@@ -21,6 +21,10 @@ const PlanetMenu = ({
     // Handle toggling planet menu
     const handleToggleMenu = () => {
         setIsPlanetMenuOpen((prev) => !prev);
+
+        if (isPlanetMenuOpen) {
+            setSelectedPlanet(null);
+        }
     };
 
     // Handle planet selection
@@ -35,7 +39,7 @@ const PlanetMenu = ({
                     aria-live='polite'
                     className='absolute left-5 top-5 rounded-lg bg-black bg-opacity-70 p-4 text-sm text-white'
                 >
-                    <h3>{selectedPlanet}</h3>
+                    <h4>{selectedPlanet}</h4>
                     <p>{planets.find((planet) => planet.name === selectedPlanet)?.details}</p>
                 </div>
             )}
@@ -62,7 +66,7 @@ const PlanetMenu = ({
                                 key={planet.name}
                                 role='menuitem'
                                 aria-label={`Select ${planet.name}`}
-                                className='flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 rounded bg-slate-800/30 p-4 hover:bg-slate-800/50'
+                                className={`flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 rounded bg-slate-800/30 p-4 ${selectedPlanet === planet.name ? 'bg-slate-800/80' : 'hover:bg-slate-800/50'}`}
                                 onClick={() => handlePlanetSelect(planet.name)}
                             >
                                 <img
