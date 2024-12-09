@@ -15,7 +15,7 @@ const Introduction: React.FC = () => {
         <InViewAnimation>
             <SectionComponent
                 id='About'
-                className='relative flex justify-center place-items-center'
+                className='relative flex justify-center min-h-screen place-items-center'
             >
                 <div className='max-w-2xl space-y-6 text-center z-10 mt-36 md:mt-0'>
                     <h1><TextShadow title="OrbitView" coloredTitle='.' /> </h1>

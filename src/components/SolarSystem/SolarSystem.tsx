@@ -4,6 +4,7 @@ import { Canvas, useFrame, } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import PlanetMenu from './PlanetMenu';
+import { Loader } from '@react-three/drei';
 
 // Utility to load textures
 const useTexture = (path?: string) => {
@@ -111,12 +112,19 @@ const SolarSystem = () => {
                 </EffectComposer> */}
 
                 {/* Lighting */}
+                <ambientLight intensity={0.1} />
                 <pointLight
                     position={[0, 0, 0]} // Sun's position
                     intensity={3}
                     castShadow
                     shadow-mapSize={{ width: 2048, height: 2048 }}
                 />
+    <directionalLight
+        position={[0, 20, 20]}
+        intensity={1}
+        castShadow
+        shadow-mapSize={{ width: 2048, height: 2048 }}
+    />
 
                 {/* Stars and Background */}
                 <Stars radius={200} depth={80} count={5000} factor={5} />
@@ -137,6 +145,8 @@ const SolarSystem = () => {
                 setIsPlanetMenuOpen={setIsPlanetMenuOpen}
                 setSelectedPlanet={setSelectedPlanet}
             />
+            <Loader />
+
         </div>
     );
 };
@@ -204,10 +214,10 @@ const Planet: React.FC<
     return (
         <group ref={planetRef} onClick={handleClick}>
             {/* Planet */}
-            <mesh castShadow receiveShadow>
+            <mesh castShadow receiveShadow frustumCulled>
                 <sphereGeometry args={[radius, 64, 64]} />
                 <meshStandardMaterial
-                    map={planetTexture}
+                    map={planetTexture || null}
                     color={color || 'white'}
                     roughness={0.5}
                     metalness={0.3}
@@ -216,7 +226,7 @@ const Planet: React.FC<
 
             {/* Rings (if any) */}
             {hasRings && (
-                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <mesh rotation={[Math.PI / 2, 0, 0]} >
                     <ringGeometry args={[radius * 1.2, radius * 1.6, 64]} />
                     <meshBasicMaterial color='gold' side={THREE.DoubleSide} />
                 </mesh>

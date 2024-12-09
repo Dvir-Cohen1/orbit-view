@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
     const { theme } = useTheme();
     return (
-        <body className={`${theme} flex min-h-screen flex-col justify-between text-primary-text`}>
+        <body className={`${theme} flex min-h-screen flex-col text-primary-text`}>
             <NavigationProvider>
                 {/* <Header /> */}
                 <main>{children}</main>
