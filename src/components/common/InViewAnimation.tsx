@@ -27,7 +27,7 @@ const OpacityAnimationComponent: React.FC<Props> = ({ children, ...rest }) => {
             initial={{ opacity: 0, translateY: -25 }}
             whileInView={{ opacity: 1, translateY: 0 }}
             transition={{ duration: 1, delay: 0.1 }}
-            className='my-12'
+            // className='my-12'
         >
             {children}
         </motion.div>

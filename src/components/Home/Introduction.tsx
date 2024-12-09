@@ -7,6 +7,7 @@ import WaterDropGrid from '../common/WaterDropGrid';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import TiltCard from '../common/TiltCard';
+import Footer from '../Layout/Footer';
 
 const Introduction: React.FC = () => {
     const router = useRouter()
@@ -15,7 +16,7 @@ const Introduction: React.FC = () => {
         <InViewAnimation>
             <SectionComponent
                 id='About'
-                className='relative flex justify-center min-h-screen place-items-center'
+                className='relative flex flex-col justify-center min-h-screen place-items-center'
             >
                 <div className='max-w-2xl space-y-6 text-center z-10 mt-36 md:mt-0'>
                     <h1><TextShadow title="OrbitView" coloredTitle='.' /> </h1>
@@ -44,6 +45,7 @@ const Introduction: React.FC = () => {
                 {/* <div className='hidden md:block absolute'>
                     <WaterDropGrid />
                 </div> */}
+                <Footer/>
             </SectionComponent>
         </InViewAnimation>
     );

@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useRef, useMemo } from 'react';
-import { Canvas, useFrame, } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, } from '@react-three/fiber';
 import { OrbitControls, Stars, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import PlanetMenu from './PlanetMenu';
 import { Loader } from '@react-three/drei';
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 
 // Utility to load textures
 const useTexture = (path?: string) => {
@@ -100,16 +101,22 @@ export const PLANETS = [
 const SolarSystem = () => {
     const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState<boolean>(false);
+    const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
+
+
+    const toggleCameraRotation = () => {
+        setIsCameraRotationEnabled((prev) => !prev);
+    };
 
     return (
         <div className='relative'>
             <Canvas camera={{ position: [0, 10, 200] }} style={{ height: '100vh' }} shadows>
                 {/* Effects */}
                 <color attach='background' args={['#111']} />
-                {/* <EffectComposer>
+                <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
                     <ToneMapping />
-                </EffectComposer> */}
+                </EffectComposer>
 
                 {/* Lighting */}
                 <ambientLight intensity={0.1} />
@@ -119,31 +126,39 @@ const SolarSystem = () => {
                     castShadow
                     shadow-mapSize={{ width: 2048, height: 2048 }}
                 />
-    <directionalLight
-        position={[0, 20, 20]}
-        intensity={1}
-        castShadow
-        shadow-mapSize={{ width: 2048, height: 2048 }}
-    />
+                <directionalLight
+                    position={[0, 20, 20]}
+                    intensity={1}
+                    castShadow
+                    shadow-mapSize={{ width: 2048, height: 2048 }}
+                />
 
                 {/* Stars and Background */}
                 <Stars radius={200} depth={80} count={5000} factor={5} />
                 <BackgroundSphere texturePath='/solar-system.png' />
 
                 {/* Solar System Scene */}
-                <SolarSystemScene setSelectedPlanet={setSelectedPlanet} />
+                <SolarSystemScene
+                    setSelectedPlanet={setSelectedPlanet}
+                    isCameraRotationEnabled={isCameraRotationEnabled}
+                />
+                {/* Camera Controls */}
+                <CameraController isCameraRotationEnabled={isCameraRotationEnabled} focusPosition={null} />
+
 
                 {/* Controls */}
-                <OrbitControls maxDistance={1500} minDistance={50} target={[0, 0, 0]} />
+                <OrbitControls maxDistance={1500} minDistance={30} target={[0, 0, 0]} />
                 <Environment preset='night' />
             </Canvas>
 
-            {/* Planet Popup */}
+            {/* Planet Menu */}
             <PlanetMenu
                 selectedPlanet={selectedPlanet}
                 isPlanetMenuOpen={isPlanetMenuOpen}
                 setIsPlanetMenuOpen={setIsPlanetMenuOpen}
                 setSelectedPlanet={setSelectedPlanet}
+                toggleCameraRotation={toggleCameraRotation}
+                isCameraRotationEnabled={isCameraRotationEnabled}
             />
             <Loader />
 
@@ -163,11 +178,28 @@ const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
     );
 };
 
+
+// Camera Controller Component
+const CameraController = ({ focusPosition, isCameraRotationEnabled }: { focusPosition: THREE.Vector3 | null, isCameraRotationEnabled: boolean }) => {
+    const { camera } = useThree();
+
+    useFrame(() => {
+        if (focusPosition && isCameraRotationEnabled) {
+            camera.position.lerp(focusPosition.clone().setLength(focusPosition.length() + 20), 0.1);
+            camera.lookAt(focusPosition);
+        }
+    });
+
+    return null;
+};
+
 // Solar System Scene
 const SolarSystemScene = ({
     setSelectedPlanet,
+    isCameraRotationEnabled,
 }: {
     setSelectedPlanet: (planetName: string) => void;
+    isCameraRotationEnabled: boolean;
 }) => {
     const sunRef = useRef<THREE.Mesh>(null);
 
@@ -180,12 +212,17 @@ const SolarSystemScene = ({
             {/* Sun */}
             <mesh ref={sunRef} position={[0, 0, 0]}>
                 <sphereGeometry args={[20, 32, 32]} />
-                <meshStandardMaterial emissive='white' emissiveIntensity={5} />
+                <meshStandardMaterial emissive="white" emissiveIntensity={5} />
             </mesh>
 
             {/* Generate Planets */}
             {PLANETS.map((planet) => (
-                <Planet key={planet.name} {...planet} setSelectedPlanet={setSelectedPlanet} />
+                <Planet
+                    key={planet.name}
+                    {...planet}
+                    setSelectedPlanet={setSelectedPlanet}
+                    isCameraRotationEnabled={isCameraRotationEnabled}
+                />
             ))}
         </>
     );
@@ -193,20 +230,25 @@ const SolarSystemScene = ({
 
 // Planet Component
 const Planet: React.FC<
-    PlanetProps & { hasRings?: boolean; setSelectedPlanet: (planetName: string) => void }
-> = ({ name, radius, distance, speed, color, texture, hasRings, setSelectedPlanet }) => {
+    PlanetProps & {
+        hasRings?: boolean;
+        setSelectedPlanet: (planetName: string) => void;
+        isCameraRotationEnabled: boolean;
+    }
+> = ({ name, radius, distance, speed, color, texture, hasRings, setSelectedPlanet, isCameraRotationEnabled }) => {
     const planetRef: any = useRef<THREE.Mesh>(null);
     const planetTexture = useTexture(texture);
 
     useFrame(({ clock }) => {
-        const time = clock.getElapsedTime() * speed;
-        if (planetRef.current) {
-            planetRef.current.position.x = Math.cos(time) * distance;
-            planetRef.current.position.z = Math.sin(time) * distance;
+        if (isCameraRotationEnabled) {
+            const time = clock.getElapsedTime() * speed;
+            if (planetRef.current) {
+                planetRef.current.position.x = Math.cos(time) * distance;
+                planetRef.current.position.z = Math.sin(time) * distance;
+            }
         }
     });
 
-    // Handle Click Event to Show Planet Details
     const handleClick = () => {
         setSelectedPlanet(name);
     };
@@ -226,9 +268,9 @@ const Planet: React.FC<
 
             {/* Rings (if any) */}
             {hasRings && (
-                <mesh rotation={[Math.PI / 2, 0, 0]} >
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
                     <ringGeometry args={[radius * 1.2, radius * 1.6, 64]} />
-                    <meshBasicMaterial color='gold' side={THREE.DoubleSide} />
+                    <meshBasicMaterial color="gold" side={THREE.DoubleSide} />
                 </mesh>
             )}
         </group>

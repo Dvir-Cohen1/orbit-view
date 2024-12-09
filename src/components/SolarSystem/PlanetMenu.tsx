@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { PLANETS } from './SolarSystem';
+import { FaArrowRotateRight, FaArrowsRotate, FaCirclePause, FaCirclePlay, FaCircleStop } from "react-icons/fa6";
 
 type PlanetMenuProps = {
     isPlanetMenuOpen: boolean;
+    isCameraRotationEnabled: boolean;
     selectedPlanet: string | null;
     setIsPlanetMenuOpen: (value: React.SetStateAction<boolean>) => void;
     setSelectedPlanet: (value: React.SetStateAction<string | null>) => void;
+    toggleCameraRotation: () => void;
 };
 
 const PlanetMenu = ({
@@ -14,6 +17,8 @@ const PlanetMenu = ({
     selectedPlanet,
     setIsPlanetMenuOpen,
     setSelectedPlanet,
+    toggleCameraRotation,
+    isCameraRotationEnabled
 }: PlanetMenuProps) => {
     // Memoize planets list for performance
     const planets = useMemo(() => PLANETS, []);
@@ -40,7 +45,7 @@ const PlanetMenu = ({
             {selectedPlanet && selectedPlanetDetails && (
                 <div
                     aria-live='polite'
-                    className='absolute left-5 top-5 max-w-96 space-y-2 rounded-lg bg-slate-800/30 bg-opacity-70 p-4 text-sm text-white shadow shadow-slate-800/50'
+                    className='absolute left-5 top-5 max-w-96 space-y-2 rounded-lg bg-gray-900/30 bg-opacity-70 p-4 text-sm text-white shadow shadow-gray-900/50'
                 >
                     <div>
                         <h4 className='flex place-items-center gap-2'>
@@ -76,14 +81,24 @@ const PlanetMenu = ({
                 className='absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5'
             >
                 {/* Planet Menu Toggle Button */}
-                <button
-                    aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
-                    aria-expanded={isPlanetMenuOpen}
-                    className='rounded bg-slate-800/35 p-3 hover:bg-slate-800/50 focus:outline-none'
-                    onClick={handleToggleMenu}
-                >
-                    {isPlanetMenuOpen ? <FaChevronDown size={15} /> : <FaChevronUp size={15} />}
-                </button>
+                <div>
+                    <button
+                        aria-label={`${isCameraRotationEnabled ? 'Pause' : 'Resume'} rotarion`}
+                        className='bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none'
+                        onClick={toggleCameraRotation}
+                    >
+                        {isCameraRotationEnabled ? <FaCirclePause /> : <FaCirclePlay />}
+
+                    </button>
+                    <button
+                        aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
+                        aria-expanded={isPlanetMenuOpen}
+                        className='bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none'
+                        onClick={handleToggleMenu}
+                    >
+                        {isPlanetMenuOpen ? <FaChevronDown size={15} /> : <FaChevronUp size={15} />}
+                    </button>
+                </div>
 
                 {/* Planet Menu */}
                 {isPlanetMenuOpen && (
@@ -93,7 +108,7 @@ const PlanetMenu = ({
                                 key={planet.name}
                                 role='menuitem'
                                 aria-label={`Select ${planet.name}`}
-                                className={`flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 rounded bg-slate-800/30 p-4 ${selectedPlanet === planet.name ? 'bg-slate-800/60' : 'hover:bg-slate-800/40'}`}
+                                className={`flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 rounded bg-gray-900/30 p-4 ${selectedPlanet === planet.name ? 'bg-gray-900/60' : 'hover:bg-gray-800/40'}`}
                                 onClick={() => handlePlanetSelect(planet.name)}
                             >
                                 <img
