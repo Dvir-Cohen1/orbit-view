@@ -1,7 +1,6 @@
+import { PLANETS } from '@/constants/solarSystem.constants';
 import React, { useMemo } from 'react';
-import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
-import { PLANETS } from './SolarSystem';
-import { FaArrowRotateRight, FaArrowsRotate, FaCirclePause, FaCirclePlay, FaCircleStop } from "react-icons/fa6";
+import { FaCirclePause, FaCirclePlay, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 
 type PlanetMenuProps = {
     isPlanetMenuOpen: boolean;
