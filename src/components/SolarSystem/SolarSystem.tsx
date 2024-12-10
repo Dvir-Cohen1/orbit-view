@@ -30,10 +30,10 @@ const SolarSystem = () => {
             <Canvas camera={{ position: [0, 10, 200] }} style={{ height: '100vh' }} shadows>
                 {/* Effects */}
                 <color attach='background' args={['#111']} />
-                <EffectComposer>
+                {/* <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
                     <ToneMapping />
-                </EffectComposer>
+                </EffectComposer> */}
 
                 {/* Lighting */}
                 <ambientLight intensity={0.1} />

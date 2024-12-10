@@ -63,13 +63,19 @@ const PlanetMenu = ({
                     </div>
                     <ul>
                         <li>
-                            <strong>Speed:</strong> {selectedPlanetDetails.speed}
+                            <strong>Radius:</strong> {selectedPlanetDetails.realRadius}km
                         </li>
                         <li>
-                            <strong>Distance:</strong> {selectedPlanetDetails.distance}
+                            <strong>Avg Distance From Sun:</strong> {selectedPlanetDetails.avgDistanceFromSun}M KM
                         </li>
                         <li>
-                            <strong>Radius:</strong> {selectedPlanetDetails.radius}
+                            <strong>Angle:</strong> {selectedPlanetDetails.angle} Degrees
+                        </li>
+                        <li>
+                            <strong>Velocity:</strong> {selectedPlanetDetails.velocity} km/s
+                        </li>
+                        <li>
+                            <strong>Mass:</strong> {selectedPlanetDetails.realMass} km/s
                         </li>
                     </ul>
                 </div>
