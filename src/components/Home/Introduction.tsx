@@ -3,7 +3,6 @@ import React from 'react';
 import TextShadow from '../common/TextShadow';
 import InViewAnimation from '../common/InViewAnimation';
 import SectionComponent from '../common/SectionComponent';
-import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import Footer from '../Layout/Footer';
 
@@ -31,15 +30,14 @@ const Introduction: React.FC = () => {
 
                     <div className='group relative inline-flex'>
                         <div className='animate-tilt absolute -inset-px mt-10 rounded-xl bg-gradient-to-r from-[#44BCFF] to-[#FF675E] opacity-70 blur-lg transition-all duration-1000 group-hover:-inset-1 group-hover:opacity-100 group-hover:duration-200'></div>
-                        <Button
-                            size={'lg'}
+                        <button
                             onClick={() => router.push('/solar-system')}
                             title='Start Exploring'
-                            className='font-pj relative mt-10 inline-flex items-center justify-center rounded-xl bg-gray-900 px-8 py-7 text-lg font-bold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2'
+                            className='font-pj relative mt-10 inline-flex items-center justify-center rounded-xl bg-gray-900 px-8 py-4 text-lg font-bold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2'
                             role='button'
                         >
                             🪐 Start Exploring
-                        </Button>
+                        </button>
                     </div>
                 </div>
                 <Footer />

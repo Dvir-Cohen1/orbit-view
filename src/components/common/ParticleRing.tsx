@@ -62,7 +62,6 @@ const PointCircle = () => {
         <>
             <group ref={ref1}>
                 <group ref={ref2} position-x={-15} position-y={5}>
-                    {/* <Astronaut scale={0.5} position-x={1} position-y={1} position-z={10} /> */}
                     <Moon scale={10} />
                 </group>
                 {pointsInner.map((point) => (

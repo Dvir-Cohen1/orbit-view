@@ -45,28 +45,9 @@ export const APP_METADATA = {
         'cosmos',
         'orbit view',
     ],
-    //     title: 'OrbitView - Explore the Cosmos',
-    //     description:
-    //         'A 3D solar system simulation built with React and Three.js, bringing space exploration to your fingertips.',
-    //     url: 'https://www.orbitview.com',
-    //     siteName: 'OrbitView',
-    //     images: [
-    //         {
-    //             url: '/images/og-image.jpg',
-    //             width: 1200,
-    //             height: 630,
-    //             alt: 'OrbitView - Explore the Cosmos',
-    //         },
-    //     ],
-    //     locale: 'en_US',
-    //     type: 'website',
-    // },
     robots: {
         index: true,
         follow: true,
         nocache: false,
-    },
-    alternates: {
-        canonical: 'https://www.orbitview.com',
     },
 };
