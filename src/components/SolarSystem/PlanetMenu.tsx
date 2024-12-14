@@ -1,6 +1,9 @@
 import { PLANETS } from '@/constants/solarSystem.constants';
+import { useNavigation } from '@/context/NavigationContext';
+import { useRouter } from 'next/navigation';
 import React, { useMemo } from 'react';
-import { FaCirclePause, FaCirclePlay, FaChevronDown, FaChevronUp } from "react-icons/fa6";
+import { FaCirclePause, FaCirclePlay, FaChevronDown, FaChevronUp, FaArrowRotateLeft } from "react-icons/fa6";
+import * as THREE from 'three';
 
 type PlanetMenuProps = {
     isPlanetMenuOpen: boolean;
@@ -9,6 +12,7 @@ type PlanetMenuProps = {
     setIsPlanetMenuOpen: (value: React.SetStateAction<boolean>) => void;
     setSelectedPlanet: (value: React.SetStateAction<string | null>) => void;
     toggleCameraRotation: () => void;
+    setFocusPosition: (position: THREE.Vector3 | null) => void; // New prop
 };
 
 const PlanetMenu = ({
@@ -17,8 +21,12 @@ const PlanetMenu = ({
     setIsPlanetMenuOpen,
     setSelectedPlanet,
     toggleCameraRotation,
-    isCameraRotationEnabled
+    isCameraRotationEnabled,
+    setFocusPosition, // Receiving new prop here
 }: PlanetMenuProps) => {
+
+    const router = useRouter()
+
     // Memoize planets list for performance
     const planets = useMemo(() => PLANETS, []);
 
@@ -34,6 +42,12 @@ const PlanetMenu = ({
     // Handle planet selection
     const handlePlanetSelect = (planetName: string) => {
         setSelectedPlanet(planetName);
+        // Find the planet and set the camera focus position
+        const planet = planets.find(p => p.name === planetName);
+        if (planet) {
+            // Calculate the planet's position based on its distance (simple assumption here)
+            setFocusPosition(new THREE.Vector3(planet.distance, 0, 0)); // Use this as a rough focus point
+        }
     };
 
     // Find selected planet details
@@ -48,18 +62,17 @@ const PlanetMenu = ({
                 >
                     <div>
                         <h4 className='flex place-items-center gap-2'>
-                            <span>
-                                <img
-                                    width={18}
-                                    height={18}
-                                    src={selectedPlanetDetails.icon}
-                                    alt={`${selectedPlanetDetails.name} icon`}
-                                    className='rounded-full'
-                                />
-                            </span>
+                            <img
+                                width={18}
+                                height={18}
+                                src={selectedPlanetDetails.icon}
+                                alt={`${selectedPlanetDetails.name} icon`}
+                                className='rounded-full'
+                                loading='lazy'
+                            />
                             {selectedPlanet}
                         </h4>
-                        <p className='text-base'>{selectedPlanetDetails.details}</p>
+                        <p className='text-sm'>{selectedPlanetDetails.details}</p>
                     </div>
                     <ul>
                         <li>
@@ -88,32 +101,38 @@ const PlanetMenu = ({
                 {/* Planet Menu Toggle Button */}
                 <div>
                     <button
-                        aria-label={`${isCameraRotationEnabled ? 'Pause' : 'Resume'} rotarion`}
+                        aria-label='Back home'
+                        className='bg-gray-900/35 rounded-bl rounded-tl p-3 hover:bg-gray-900/50 focus:outline-none'
+                        onClick={() => router.push('/')}
+                    >
+                        <FaArrowRotateLeft />
+                    </button>
+                    <button
+                        aria-label={`${isCameraRotationEnabled ? 'Pause' : 'Resume'} rotation`}
                         className='bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none'
                         onClick={toggleCameraRotation}
                     >
                         {isCameraRotationEnabled ? <FaCirclePause /> : <FaCirclePlay />}
-
                     </button>
                     <button
                         aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
                         aria-expanded={isPlanetMenuOpen}
-                        className='bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none'
+                        className='bg-gray-900/35 rounded-br rounded-tr  p-3 hover:bg-gray-900/50 focus:outline-none'
                         onClick={handleToggleMenu}
                     >
-                        {isPlanetMenuOpen ? <FaChevronDown size={15} /> : <FaChevronUp size={15} />}
+                        {isPlanetMenuOpen ? <FaChevronDown /> : <FaChevronUp />}
                     </button>
                 </div>
 
                 {/* Planet Menu */}
                 {isPlanetMenuOpen && (
                     <div role='menu' className='flex flex-wrap'>
-                        {planets.map((planet) => (
+                        {planets.map((planet, index) => (
                             <div
                                 key={planet.name}
                                 role='menuitem'
                                 aria-label={`Select ${planet.name}`}
-                                className={`flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 rounded bg-gray-900/30 p-4 ${selectedPlanet === planet.name ? 'bg-gray-900/60' : 'hover:bg-gray-800/40'}`}
+                                className={`flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 ${index === 0 && 'rounded-bl rounded-tl'} ${index === planets.length - 1 && 'rounded-br rounded-tr'} bg-gray-900/30 p-4 ${selectedPlanet === planet.name ? 'bg-gray-900/60' : 'hover:bg-gray-800/40'}`}
                                 onClick={() => handlePlanetSelect(planet.name)}
                             >
                                 <img
@@ -123,7 +142,7 @@ const PlanetMenu = ({
                                     alt={`${planet.name} icon`}
                                     className='rounded-full'
                                 />
-                                <p>{planet.name}</p>
+                                <p className='text-xs'>{planet.name}</p>
                             </div>
                         ))}
                     </div>
