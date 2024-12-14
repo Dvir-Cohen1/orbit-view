@@ -1,9 +1,9 @@
- <h1 align="center">🪐 Orbit View</h1>
+ <div align="center">
+    <h1 align="center">🪐 Orbit View</h1>
+    <p> A 3D solar system simulation built with React and Three.js, bringing the wonders of space to your screen.</p>
+ </div>
 
-   <div align="center">
-    A 3D solar system simulation built with React and Three.js, bringing the wonders of space to your screen.
-    </div>
-</div>
+<img src="https://github.com/user-attachments/assets/e9f1f92a-f48f-4ae2-9a70-8a088d4acbb3" alt="Project Banner">
 
 ## 📋 <a name="table">Table of Contents</a>
 
