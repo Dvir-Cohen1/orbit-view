@@ -140,8 +140,8 @@
         @apply text-2xl font-bold;
     }
 
-    strong{
-         @apply font-semibold;
+    strong {
+        @apply font-semibold;
     }
 }
 

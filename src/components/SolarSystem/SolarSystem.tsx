@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import PlanetMenu from './PlanetMenu';
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 
 // Utility: Load textures
 const useTexture = (path?: string) =>
@@ -20,14 +21,18 @@ const SolarSystem = () => {
     const [focusPosition, setFocusPosition] = useState<THREE.Vector3 | null>(null);
     const controlsRef = useRef<any>(null);
 
-    const toggleCameraRotation = () =>
-        setIsCameraRotationEnabled((prev) => !prev);
+    const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
     return (
-        <div className="relative">
+        <div className='relative'>
             <Canvas camera={{ position: [0, 10, 200] }} style={{ height: '100vh' }} shadows>
                 {/* Scene Background */}
-                <color attach="background" args={['#0D1117']} />
+                <color attach='background' args={['#0D1117']} />
+
+                <EffectComposer>
+                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
+                    <ToneMapping />
+                </EffectComposer>
 
                 {/* Lighting */}
                 <ambientLight intensity={0.05} />
@@ -36,7 +41,7 @@ const SolarSystem = () => {
 
                 {/* Stars & Background */}
                 <Stars radius={200} depth={80} count={5000} factor={4} />
-                <BackgroundSphere texturePath="/solar-system.png" />
+                <BackgroundSphere texturePath='/solar-system.png' />
 
                 {/* Solar System */}
                 <SolarSystemScene
@@ -50,8 +55,13 @@ const SolarSystem = () => {
                     isCameraRotationEnabled={isCameraRotationEnabled}
                     focusPosition={focusPosition}
                 />
-                <OrbitControls ref={controlsRef} maxDistance={1500} minDistance={30} target={[0, 0, 0]} />
-                <Environment preset="night" />
+                <OrbitControls
+                    ref={controlsRef}
+                    maxDistance={1500}
+                    minDistance={30}
+                    target={[0, 0, 0]}
+                />
+                <Environment preset='night' />
             </Canvas>
 
             {/* Planet Menu */}
@@ -121,7 +131,7 @@ const SolarSystemScene = ({
             {/* Sun */}
             <mesh ref={sunRef} position={[0, 0, 0]} onClick={() => setFocusPosition(null)}>
                 <sphereGeometry args={[32, 32, 32]} />
-                <meshStandardMaterial emissive="white" emissiveIntensity={5} />
+                <meshStandardMaterial emissive='white' emissiveIntensity={5} />
             </mesh>
 
             {/* Planets */}
@@ -187,8 +197,9 @@ const Planet = ({
                 <meshStandardMaterial
                     map={planetTexture || null}
                     color={color || 'white'}
-                    roughness={0.5}
-                    metalness={0.3}
+                    // roughness={0.5}
+                    // metalness={0.3}
+                    // emissive='blue' emissiveIntensity={5}
                 />
             </mesh>
             {hasRings && <PlanetRings radius={radius} />}
@@ -200,14 +211,14 @@ const Planet = ({
 const PlanetRings = ({ radius }: { radius: number }) => (
     <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius * 1.2, radius * 1.6, 64]} />
-        <meshBasicMaterial color="gold" side={THREE.DoubleSide} />
+        <meshBasicMaterial color='gold' side={THREE.DoubleSide} />
     </mesh>
 );
 
 const PlanetFocusSphere = ({ radius }: { radius: number }) => (
     <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius * 1.2, radius * 1.6, 64]} />
-        <meshBasicMaterial color="gray" side={THREE.DoubleSide} />
+        <meshBasicMaterial color='gray' side={THREE.DoubleSide} />
     </mesh>
 );
 

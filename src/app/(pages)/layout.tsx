@@ -1,6 +1,6 @@
-'use client'
+'use client';
 import type { Metadata } from 'next';
-import { poppins, nunito_sans } from '@/utils/fonts';
+import { poppins, nunito_sans } from '@/lib/fonts';
 import '@/styles/globals.css';
 import { useTheme } from '@/context/ThemeContext';
 import Footer from '@/components/Layout/Footer';
@@ -21,6 +21,6 @@ export default function RootLayout({
                 <main>{children}</main>
                 {/* <Footer /> */}
             </NavigationProvider>
-        </body >
+        </body>
     );
 }

@@ -9,9 +9,8 @@ import {
     CameraShake,
     SpotLight,
 } from '@react-three/drei';
-import { pointsInner, pointsOuter } from '@/utils/utils';
+import { pointsInner, pointsOuter } from '@/lib/particals.utils';
 import Moon from '../Moon';
-import Astronaut from '../Astronaut';
 
 const ParticleRing = () => {
     return (
@@ -63,7 +62,6 @@ const PointCircle = () => {
         <>
             <group ref={ref1}>
                 <group ref={ref2} position-x={-15} position-y={5}>
-                    {/* <Astronaut scale={0.5} position-x={1} position-y={1} position-z={10} /> */}
                     <Moon scale={10} />
                 </group>
                 {pointsInner.map((point) => (
