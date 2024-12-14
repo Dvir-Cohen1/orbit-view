@@ -92,7 +92,7 @@ export const PLANETS = [
         speed: 0.08,
         velocity: 6.81, // km/s
         angle: 0.77, // degrees
-        realMass: 8.6810e25, // kg
+        realMass: 8.681e25, // kg
         color: 'lightblue',
         details: 'The planet with a unique sideways rotation and faint ring system.',
         icon: '/planets/uranus.png',

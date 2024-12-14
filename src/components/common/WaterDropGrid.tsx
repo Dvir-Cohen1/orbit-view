@@ -3,9 +3,7 @@
 import anime from 'animejs';
 
 const WaterDropGrid = () => {
-    return (
-        <DotGrid />
-    );
+    return <DotGrid />;
 };
 
 const GRID_WIDTH = 55;

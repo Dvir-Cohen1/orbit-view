@@ -7,53 +7,68 @@ Source: https://sketchfab.com/3d-models/sun-9ef1c68fbb944147bcfcc891d3912645
 Title: Sun
 */
 
-import * as THREE from 'three'
-import React, { useRef } from 'react'
-import { useGLTF, useAnimations } from '@react-three/drei'
-import { GLTF } from 'three-stdlib'
+import * as THREE from 'three';
+import React, { useRef } from 'react';
+import { useGLTF, useAnimations } from '@react-three/drei';
+import { GLTF } from 'three-stdlib';
 
 type GLTFResult = GLTF & {
-  nodes: {
-    UnstableStarCore_1_0: THREE.Mesh
-    UnstableStarref_2_0: THREE.Mesh
-  }
-  materials: {
-    material: THREE.MeshStandardMaterial
-    material_1: THREE.MeshPhysicalMaterial
-  }
-  animations: GLTFAction[]
-}
+    nodes: {
+        UnstableStarCore_1_0: THREE.Mesh;
+        UnstableStarref_2_0: THREE.Mesh;
+    };
+    materials: {
+        material: THREE.MeshStandardMaterial;
+        material_1: THREE.MeshPhysicalMaterial;
+    };
+    animations: GLTFAction[];
+};
 
-type ActionName = 'Take 001'
+type ActionName = 'Take 001';
 interface GLTFAction extends THREE.AnimationClip {
-  name: ActionName
+    name: ActionName;
 }
-type ContextType = Record<string, React.ForwardRefExoticComponent<JSX.IntrinsicElements['mesh']>>
+type ContextType = Record<string, React.ForwardRefExoticComponent<JSX.IntrinsicElements['mesh']>>;
 
 export default function Sun(props: JSX.IntrinsicElements['group']) {
-  const group = useRef<THREE.Group>()
-  const { nodes, materials, animations } = useGLTF('/models/Sun.glb') as GLTFResult
-  const { actions } = useAnimations(animations, group)
-  return (
-    <group ref={group} {...props} dispose={null}>
-      <group name="Sketchfab_Scene">
-        <group name="Sketchfab_model" rotation={[-Math.PI / 2, 0, 0]}>
-          <group name="3a2aaa22fb3d4b329318a980ad1bf6d1fbx" rotation={[Math.PI / 2, 0, 0]}>
-            <group name="Object_2">
-              <group name="RootNode">
-                <group name="UnstableStarCore" rotation={[-Math.PI / 2, 0, 0]}>
-                  <mesh name="UnstableStarCore_1_0" geometry={nodes.UnstableStarCore_1_0.geometry} material={materials.material} />
+    const group = useRef<THREE.Group>();
+    const { nodes, materials, animations } = useGLTF('/models/Sun.glb') as GLTFResult;
+    const { actions } = useAnimations(animations, group);
+    return (
+        <group ref={group} {...props} dispose={null}>
+            <group name='Sketchfab_Scene'>
+                <group name='Sketchfab_model' rotation={[-Math.PI / 2, 0, 0]}>
+                    <group
+                        name='3a2aaa22fb3d4b329318a980ad1bf6d1fbx'
+                        rotation={[Math.PI / 2, 0, 0]}
+                    >
+                        <group name='Object_2'>
+                            <group name='RootNode'>
+                                <group name='UnstableStarCore' rotation={[-Math.PI / 2, 0, 0]}>
+                                    <mesh
+                                        name='UnstableStarCore_1_0'
+                                        geometry={nodes.UnstableStarCore_1_0.geometry}
+                                        material={materials.material}
+                                    />
+                                </group>
+                                <group
+                                    name='UnstableStarref'
+                                    rotation={[-Math.PI / 2, 0, 0]}
+                                    scale={1.01}
+                                >
+                                    <mesh
+                                        name='UnstableStarref_2_0'
+                                        geometry={nodes.UnstableStarref_2_0.geometry}
+                                        material={materials.material_1}
+                                    />
+                                </group>
+                            </group>
+                        </group>
+                    </group>
                 </group>
-                <group name="UnstableStarref" rotation={[-Math.PI / 2, 0, 0]} scale={1.01}>
-                  <mesh name="UnstableStarref_2_0" geometry={nodes.UnstableStarref_2_0.geometry} material={materials.material_1} />
-                </group>
-              </group>
             </group>
-          </group>
         </group>
-      </group>
-    </group>
-  )
+    );
 }
 
-useGLTF.preload('/models/Sun.glb')
+useGLTF.preload('/models/Sun.glb');

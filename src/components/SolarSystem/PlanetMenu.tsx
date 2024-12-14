@@ -2,7 +2,13 @@ import { PLANETS } from '@/constants/solarSystem.constants';
 import { useNavigation } from '@/context/NavigationContext';
 import { useRouter } from 'next/navigation';
 import React, { useMemo } from 'react';
-import { FaCirclePause, FaCirclePlay, FaChevronDown, FaChevronUp, FaArrowRotateLeft } from "react-icons/fa6";
+import {
+    FaCirclePause,
+    FaCirclePlay,
+    FaChevronDown,
+    FaChevronUp,
+    FaArrowRotateLeft,
+} from 'react-icons/fa6';
 import * as THREE from 'three';
 
 type PlanetMenuProps = {
@@ -24,8 +30,7 @@ const PlanetMenu = ({
     isCameraRotationEnabled,
     setFocusPosition, // Receiving new prop here
 }: PlanetMenuProps) => {
-
-    const router = useRouter()
+    const router = useRouter();
 
     // Memoize planets list for performance
     const planets = useMemo(() => PLANETS, []);
@@ -43,7 +48,7 @@ const PlanetMenu = ({
     const handlePlanetSelect = (planetName: string) => {
         setSelectedPlanet(planetName);
         // Find the planet and set the camera focus position
-        const planet = planets.find(p => p.name === planetName);
+        const planet = planets.find((p) => p.name === planetName);
         if (planet) {
             // Calculate the planet's position based on its distance (simple assumption here)
             setFocusPosition(new THREE.Vector3(planet.distance, 0, 0)); // Use this as a rough focus point
@@ -79,7 +84,8 @@ const PlanetMenu = ({
                             <strong>Radius:</strong> {selectedPlanetDetails.realRadius}km
                         </li>
                         <li>
-                            <strong>Avg Distance From Sun:</strong> {selectedPlanetDetails.avgDistanceFromSun}M KM
+                            <strong>Avg Distance From Sun:</strong>{' '}
+                            {selectedPlanetDetails.avgDistanceFromSun}M KM
                         </li>
                         <li>
                             <strong>Angle:</strong> {selectedPlanetDetails.angle} Degrees
@@ -102,7 +108,7 @@ const PlanetMenu = ({
                 <div>
                     <button
                         aria-label='Back home'
-                        className='bg-gray-900/35 rounded-bl rounded-tl p-3 hover:bg-gray-900/50 focus:outline-none'
+                        className='rounded-bl rounded-tl bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none'
                         onClick={() => router.push('/')}
                     >
                         <FaArrowRotateLeft />
@@ -117,7 +123,7 @@ const PlanetMenu = ({
                     <button
                         aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
                         aria-expanded={isPlanetMenuOpen}
-                        className='bg-gray-900/35 rounded-br rounded-tr  p-3 hover:bg-gray-900/50 focus:outline-none'
+                        className='rounded-br rounded-tr bg-gray-900/35  p-3 hover:bg-gray-900/50 focus:outline-none'
                         onClick={handleToggleMenu}
                     >
                         {isPlanetMenuOpen ? <FaChevronDown /> : <FaChevronUp />}
