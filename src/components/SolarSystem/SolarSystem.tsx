@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import PlanetMenu from './PlanetMenu';
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
+import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
 
 // Utility: Load textures
 const useTexture = (path?: string) =>
@@ -27,6 +28,11 @@ const SolarSystem = () => {
             <Canvas camera={{ position: [0, 10, 200] }} style={{ height: '100vh' }} shadows>
                 {/* Scene Background */}
                 <color attach='background' args={['#0D1117']} />
+
+                <EffectComposer>
+                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
+                    <ToneMapping />
+                </EffectComposer>
 
                 {/* Lighting */}
                 <ambientLight intensity={0.05} />
@@ -191,8 +197,9 @@ const Planet = ({
                 <meshStandardMaterial
                     map={planetTexture || null}
                     color={color || 'white'}
-                    roughness={0.5}
-                    metalness={0.3}
+                    // roughness={0.5}
+                    // metalness={0.3}
+                    // emissive='blue' emissiveIntensity={5}
                 />
             </mesh>
             {hasRings && <PlanetRings radius={radius} />}
