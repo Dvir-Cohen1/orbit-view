@@ -31,17 +31,17 @@ const SolarSystem = () => {
         <div className='relative'>
             <Canvas camera={{ position: [0, 10, 200] }} style={{ height: '100vh' }} shadows>
                 {/* Effects */}
-                <color attach='background' args={['#111']} />
+                <color attach='background' args={['#0D1117']} />
                 {/* <EffectComposer>
-                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
+                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.2} />
                     <ToneMapping />
                 </EffectComposer> */}
 
                 {/* Lighting */}
-                <ambientLight intensity={0.1} />
+                <ambientLight intensity={0.05} />
                 <pointLight
                     position={[0, 0, 0]} // Sun's position
-                    intensity={3}
+                    intensity={2}
                     castShadow
                     shadow-mapSize={{ width: 1024, height: 1024 }}
                 />
@@ -53,7 +53,7 @@ const SolarSystem = () => {
                 />
 
                 {/* Stars and Background */}
-                <Stars radius={200} depth={80} count={5000} factor={5} />
+                <Stars radius={200} depth={80} count={5000} factor={4} />
                 <BackgroundSphere texturePath='/solar-system.png' />
 
                 {/* Solar System Scene */}

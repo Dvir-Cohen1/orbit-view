@@ -3,7 +3,7 @@ export const PLANETS = [
         name: 'Mercury',
         radius: 0.5, // visualization radius
         realRadius: 2439.7, // real radius in km
-        distance: 30,
+        distance: 60,
         avgDistanceFromSun: 57.9, // in million km
         speed: 1,
         velocity: 47.87, // km/s
@@ -17,7 +17,7 @@ export const PLANETS = [
         name: 'Venus',
         radius: 0.9, // visualization radius
         realRadius: 6051.8, // real radius in km
-        distance: 50,
+        distance: 80,
         avgDistanceFromSun: 108.2, // in million km
         speed: 0.5,
         velocity: 35.02, // km/s
@@ -31,7 +31,7 @@ export const PLANETS = [
         name: 'Earth',
         radius: 1, // visualization radius
         realRadius: 6371, // real radius in km
-        distance: 80,
+        distance: 100,
         avgDistanceFromSun: 149.6, // in million km
         speed: 0.3,
         velocity: 29.78, // km/s
@@ -45,7 +45,7 @@ export const PLANETS = [
         name: 'Mars',
         radius: 0.8, // visualization radius
         realRadius: 3389.5, // real radius in km
-        distance: 100,
+        distance: 130,
         avgDistanceFromSun: 227.9, // in million km
         speed: 0.25,
         velocity: 24.07, // km/s
