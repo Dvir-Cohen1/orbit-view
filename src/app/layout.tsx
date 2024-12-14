@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { poppins, nunito_sans } from '@/utils/fonts';
+import { poppins, nunito_sans } from '@/lib/fonts';
 import '@/styles/globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
-import { APP_METADATA } from '@/utils/constants';
+import { APP_METADATA } from '@/constants/app.constants';
 
 export const metadata: Metadata = APP_METADATA;
 

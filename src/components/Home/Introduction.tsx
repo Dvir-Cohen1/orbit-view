@@ -3,10 +3,8 @@ import React from 'react';
 import TextShadow from '../common/TextShadow';
 import InViewAnimation from '../common/InViewAnimation';
 import SectionComponent from '../common/SectionComponent';
-import WaterDropGrid from '../common/WaterDropGrid';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
-import TiltCard from '../common/TiltCard';
 import Footer from '../Layout/Footer';
 
 const Introduction: React.FC = () => {
@@ -44,10 +42,6 @@ const Introduction: React.FC = () => {
                         </Button>
                     </div>
                 </div>
-
-                {/* <div className='hidden md:block absolute'>
-                    <WaterDropGrid />
-                </div> */}
                 <Footer />
             </SectionComponent>
         </InViewAnimation>

@@ -9,9 +9,8 @@ import {
     CameraShake,
     SpotLight,
 } from '@react-three/drei';
-import { pointsInner, pointsOuter } from '@/utils/utils';
+import { pointsInner, pointsOuter } from '@/lib/particals.utils';
 import Moon from '../Moon';
-import Astronaut from '../Astronaut';
 
 const ParticleRing = () => {
     return (

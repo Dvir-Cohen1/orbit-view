@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
-import SliderToggle from '../common/ThemeModeSlider';
-import Link from 'next/link';
-import { ANIMATED_HAMBURGER_BUTTON_VARIANTS } from '@/utils/constants';
 import { useNavigation } from '@/context/NavigationContext';
+import { ANIMATED_HAMBURGER_BUTTON_VARIANTS } from '@/constants/app.constants';
 const MobileMenu = () => {
     const [active, setActive] = useState(false);
     const { selectedLink, updateSelectedLink } = useNavigation();
