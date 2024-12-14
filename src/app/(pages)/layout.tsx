@@ -1,6 +1,6 @@
-'use client'
+'use client';
 import type { Metadata } from 'next';
-import { poppins, nunito_sans } from '@/utils/fonts';
+import { poppins, nunito_sans } from '@/lib/fonts';
 import '@/styles/globals.css';
 import { useTheme } from '@/context/ThemeContext';
 import Footer from '@/components/Layout/Footer';
@@ -15,12 +15,12 @@ export default function RootLayout({
 }>) {
     const { theme } = useTheme();
     return (
-        <body className={`${theme} flex min-h-screen flex-col justify-between text-primary-text`}>
+        <body className={`${theme} flex min-h-screen flex-col text-primary-text`}>
             <NavigationProvider>
-                <Header />
+                {/* <Header /> */}
                 <main>{children}</main>
-                <Footer />
+                {/* <Footer /> */}
             </NavigationProvider>
-        </body >
+        </body>
     );
 }
