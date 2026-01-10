@@ -8,7 +8,9 @@ import PlanetMenu from './PlanetMenu';
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing'
-
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'; // 👈 add this
+import { useCursor } from '@react-three/drei';
+import { useTexture as useTextureDrei } from '@react-three/drei';
 // Utility: Load textures
 const useTexture = (path?: string) =>
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
@@ -19,7 +21,10 @@ const SolarSystem = () => {
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
     const [focusPosition, setFocusPosition] = useState<THREE.Vector3 | null>(null);
-    const controlsRef = useRef<any>(null);
+    // const controlsRef = useRef<any>(null);
+
+    const controlsRef = useRef<OrbitControlsImpl | null>(null); // 👈 type it properly
+
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
@@ -48,12 +53,14 @@ const SolarSystem = () => {
                     setSelectedPlanet={setSelectedPlanet}
                     isCameraRotationEnabled={isCameraRotationEnabled}
                     setFocusPosition={setFocusPosition}
+                    selectedPlanet={selectedPlanet}
                 />
 
                 {/* Camera & Controls */}
                 <CameraController
                     isCameraRotationEnabled={isCameraRotationEnabled}
                     focusPosition={focusPosition}
+                    controlsRef={controlsRef}
                 />
                 <OrbitControls
                     ref={controlsRef}
@@ -81,7 +88,7 @@ const SolarSystem = () => {
 
 // Background Sphere Component
 const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
-    const texture = useTexture(texturePath);
+    const texture = useTextureDrei(texturePath);
     return (
         <mesh>
             <sphereGeometry args={[600, 120, 120]} />
@@ -94,18 +101,32 @@ const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
 const CameraController = ({
     focusPosition,
     isCameraRotationEnabled,
+    controlsRef,
 }: {
     focusPosition: THREE.Vector3 | null;
     isCameraRotationEnabled: boolean;
+    controlsRef: React.RefObject<OrbitControlsImpl | null>;
 }) => {
     const { camera } = useThree();
 
     useFrame(() => {
-        if (focusPosition && isCameraRotationEnabled) {
-            camera.position.lerp(focusPosition.clone().setLength(focusPosition.length() + 20), 0.1);
-            camera.lookAt(focusPosition);
+        if (!focusPosition || !isCameraRotationEnabled) return;
+
+        // Where we want the camera to end up
+        const target = focusPosition;
+        const desiredCameraPos = target.clone().setLength(target.length() + 20);
+
+        // Smooth camera move
+        camera.position.lerp(desiredCameraPos, 0.1);
+        camera.lookAt(target);
+
+        // 👇 keep OrbitControls' target in sync with the planet
+        if (controlsRef.current) {
+            controlsRef.current.target.lerp(target, 0.1);
+            controlsRef.current.update();
         }
     });
+
 
     return null;
 };
@@ -115,10 +136,12 @@ const SolarSystemScene = ({
     setSelectedPlanet,
     isCameraRotationEnabled,
     setFocusPosition,
+    selectedPlanet
 }: {
     setSelectedPlanet: (planetName: string) => void;
     isCameraRotationEnabled: boolean;
     setFocusPosition: (position: THREE.Vector3 | null) => void;
+    selectedPlanet: any
 }) => {
     const sunRef = useRef<THREE.Mesh>(null);
 
@@ -133,6 +156,12 @@ const SolarSystemScene = ({
                 <sphereGeometry args={[32, 32, 32]} />
                 <meshStandardMaterial emissive='white' emissiveIntensity={5} />
             </mesh>
+            {PLANETS.map((planet) => (
+                <mesh key={`${planet.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[planet.distance - 0.2, planet.distance + 0.2, 128]} />
+                    <meshBasicMaterial color='#333' side={THREE.DoubleSide} transparent opacity={0.4} />
+                </mesh>
+            ))}
 
             {/* Planets */}
             {PLANETS.map((planet) => (
@@ -142,8 +171,15 @@ const SolarSystemScene = ({
                     setSelectedPlanet={setSelectedPlanet}
                     isCameraRotationEnabled={isCameraRotationEnabled}
                     setFocusPosition={setFocusPosition}
+                    selectedPlanet={selectedPlanet}
                 />
             ))}
+            {/* {PLANETS.map((planet) => (
+                <mesh key={`${planet.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[planet.distance - 0.2, planet.distance + 0.2, 128]} />
+                    <meshBasicMaterial color='#333' side={THREE.DoubleSide} transparent opacity={0.4} />
+                </mesh>
+            ))} */}
         </>
     );
 };
@@ -155,6 +191,58 @@ const calculateOrbitPosition = (time: number, distance: number) => ({
 });
 
 // Planet Component
+// const Planet = ({
+//     name,
+//     radius,
+//     distance,
+//     speed,
+//     color,
+//     texture,
+//     hasRings,
+//     setSelectedPlanet,
+//     isCameraRotationEnabled,
+//     setFocusPosition,
+// }: PlanetProps & {
+//     hasRings?: boolean;
+//     setSelectedPlanet: (planetName: string) => void;
+//     isCameraRotationEnabled: boolean;
+//     setFocusPosition: (position: THREE.Vector3) => void;
+// }) => {
+//     const planetRef: any = useRef<THREE.Mesh>(null);
+//     const planetTexture = useTexture(texture);
+
+//     useFrame(({ clock }) => {
+//         if (isCameraRotationEnabled && planetRef.current) {
+//             const time = clock.getElapsedTime() * speed;
+//             const { x, z } = calculateOrbitPosition(time, distance);
+//             planetRef.current.position.set(x, 0, z);
+//         }
+//     });
+
+//     const handleClick = () => {
+//         if (planetRef.current) {
+//             setSelectedPlanet(name);
+//             setFocusPosition(planetRef.current.position);
+//         }
+//     };
+
+//     return (
+//         <group ref={planetRef} onClick={handleClick}>
+//             <mesh castShadow receiveShadow>
+//                 <sphereGeometry args={[radius, 64, 64]} />
+//                 <meshStandardMaterial
+//                     map={planetTexture || null}
+//                     color={color || 'white'}
+//                 // roughness={0.5}
+//                 // metalness={0.3}
+//                 // emissive='blue' emissiveIntensity={5}
+//                 />
+//             </mesh>
+//             {hasRings && <PlanetRings radius={radius} />}
+//         </group>
+//     );
+// };
+
 const Planet = ({
     name,
     radius,
@@ -166,14 +254,19 @@ const Planet = ({
     setSelectedPlanet,
     isCameraRotationEnabled,
     setFocusPosition,
+    selectedPlanet,        // 👈 add this prop
 }: PlanetProps & {
     hasRings?: boolean;
     setSelectedPlanet: (planetName: string) => void;
     isCameraRotationEnabled: boolean;
     setFocusPosition: (position: THREE.Vector3) => void;
+    selectedPlanet: string | null;
 }) => {
-    const planetRef: any = useRef<THREE.Mesh>(null);
+    const planetRef = useRef<THREE.Group>(null);
+    const [hovered, setHovered] = useState(false);
     const planetTexture = useTexture(texture);
+
+    useCursor(hovered);
 
     useFrame(({ clock }) => {
         if (isCameraRotationEnabled && planetRef.current) {
@@ -184,22 +277,35 @@ const Planet = ({
     });
 
     const handleClick = () => {
-        if (planetRef.current) {
-            setSelectedPlanet(name);
-            setFocusPosition(planetRef.current.position);
-        }
+        if (!planetRef.current) return;
+        setSelectedPlanet(name);
+        setFocusPosition(planetRef.current.position);
     };
 
+    const isSelected = selectedPlanet === name;
+    const scale = isSelected ? 1.3 : hovered ? 1.15 : 1;
+
     return (
-        <group ref={planetRef} onClick={handleClick}>
+        <group
+            ref={planetRef}
+            onClick={handleClick}
+            onPointerOver={(e) => {
+                e.stopPropagation();
+                setHovered(true);
+            }}
+            onPointerOut={(e) => {
+                e.stopPropagation();
+                setHovered(false);
+            }}
+            scale={scale}
+        >
             <mesh castShadow receiveShadow>
                 <sphereGeometry args={[radius, 64, 64]} />
                 <meshStandardMaterial
                     map={planetTexture || null}
                     color={color || 'white'}
-                    // roughness={0.5}
-                    // metalness={0.3}
-                    // emissive='blue' emissiveIntensity={5}
+                    emissive={isSelected ? 'white' : color || 'white'}
+                    emissiveIntensity={isSelected ? 0.6 : 0.1}
                 />
             </mesh>
             {hasRings && <PlanetRings radius={radius} />}
