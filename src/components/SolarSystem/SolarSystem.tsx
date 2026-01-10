@@ -1,7 +1,7 @@
 // SolarSystem.tsx
 'use client';
 
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
     OrbitControls,
@@ -17,6 +17,8 @@ import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+
+const MAX_CAMERA_DISTANCE = 6000;
 
 const useTexture = (path?: string) =>
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
@@ -53,11 +55,16 @@ const SolarSystem = () => {
     return (
         <div className="relative">
             <Canvas
-                camera={{ position: [0, 10, 200], near: 0.1, far: 5000 }}
+                // camera={{ position: [0, 10, 200], near: 0.1, far: 5000 }}
+                camera={{ position: [0, 10, 200], near: 0.1, far: 20000 }}
+                gl={{ logarithmicDepthBuffer: true }}
                 style={{ height: '100vh' }}
                 shadows
             >
-                <color attach="background" args={['#0D1117']} />
+                {/* ✅ Infinite pano background (cannot be escaped) */}
+                <Suspense fallback={null}>
+                    <PanoramaBackground texturePath="/solar-system.png" />
+                </Suspense>
 
                 <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={1.5} />
@@ -68,8 +75,8 @@ const SolarSystem = () => {
                 <pointLight position={[0, 0, 0]} intensity={2} castShadow />
                 <directionalLight position={[0, 20, 20]} intensity={1} castShadow />
 
-                <Stars radius={200} depth={80} count={5000} factor={4} />
-                <BackgroundSphere texturePath="/solar-system.png" />
+                {/* optional now, keep if you like */}
+                <Stars radius={1000} depth={480} count={8000} factor={6} />
 
                 <SolarSystemScene
                     setSelectedPlanet={setSelectedPlanet}
@@ -80,7 +87,6 @@ const SolarSystem = () => {
                     onPlanetPosition={updatePlanetPosition}
                 />
 
-                {/* ✅ follow target but DO NOT fight zoom */}
                 <CameraController
                     controlsRef={controlsRef}
                     focusedTarget={focusedTarget}
@@ -88,15 +94,14 @@ const SolarSystem = () => {
                     getPlanetRadius={(name) => planetsByName.get(name)?.radius ?? 1}
                 />
 
-                {/* ✅ OrbitControls owns zoom (distance) */}
                 <OrbitControls
                     ref={controlsRef}
                     enableDamping
                     dampingFactor={0.08}
-                    maxDistance={1500}
+                    maxDistance={MAX_CAMERA_DISTANCE}
                     minDistance={30}
                     enableZoom
-                    zoomSpeed={1.0}
+                    zoomSpeed={2.0}
                 />
 
                 <Environment preset="night" />
@@ -118,20 +123,34 @@ const SolarSystem = () => {
     );
 };
 
-const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
+const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
     const texture = useTextureDrei(texturePath);
-    return (
-        <mesh>
-            <sphereGeometry args={[600, 120, 120]} />
-            <meshBasicMaterial map={texture} side={THREE.DoubleSide} depthWrite={false} />
-        </mesh>
-    );
+    const { scene } = useThree();
+
+    useEffect(() => {
+        // panorama sky setup
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        // sometimes needed to apply mapping change
+        texture.needsUpdate = true;
+
+        // If your pano looks mirrored, uncomment:
+        // texture.wrapS = THREE.RepeatWrapping;
+        // texture.repeat.x = -1;
+
+        scene.background = texture;
+
+        return () => {
+            if (scene.background === texture) scene.background = null;
+        };
+    }, [scene, texture]);
+
+    return null;
 };
 
 /**
- * ✅ Follow controller that preserves user zoom:
- * - Each frame: move OrbitControls target to the focused body
- * - Keep the *current* camera distance (zoom), only clamp it to safe bounds
+ * Follow controller that preserves user zoom.
  */
 const CameraController = ({
     controlsRef,
@@ -153,7 +172,6 @@ const CameraController = ({
     useFrame(() => {
         if (!focusedTarget) return;
 
-        // 1) Resolve target position
         if (focusedTarget.type === 'sun') {
             tmpTarget.set(0, 0, 0);
         } else {
@@ -164,8 +182,6 @@ const CameraController = ({
 
         const controls = controlsRef.current;
 
-        // 2) Determine current camera offset from target (this encodes zoom + angle)
-        // Prefer controls.object & controls.target if available
         if (controls) {
             tmpOffset.copy(controls.object.position).sub(controls.target);
         } else {
@@ -174,22 +190,16 @@ const CameraController = ({
 
         let distance = tmpOffset.length();
 
-        // 3) Clamp distance so you can’t zoom “into” the object
-        // Sun: give it a big-ish min distance, planets: based on radius
         const minDistance =
-            focusedTarget.type === 'sun'
-                ? 60
-                : Math.max(8, getPlanetRadius(focusedTarget.name) * 3.2);
+            focusedTarget.type === 'sun' ? 60 : Math.max(8, getPlanetRadius(focusedTarget.name) * 3.2);
 
-        const maxDistance = 1500;
+        const maxDistance = MAX_CAMERA_DISTANCE;
 
         distance = THREE.MathUtils.clamp(distance, minDistance, maxDistance);
 
-        // 4) Rebuild desired camera position using the *same direction* but clamped distance
         tmpOffset.normalize().multiplyScalar(distance);
         tmpDesiredPos.copy(tmpTarget).add(tmpOffset);
 
-        // 5) Smoothly follow target + keep OrbitControls in sync
         camera.position.lerp(tmpDesiredPos, 0.18);
 
         if (controls) {
