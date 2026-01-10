@@ -21,16 +21,12 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 const useTexture = (path?: string) =>
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
 
-type FocusTarget =
-    | { type: 'sun' }
-    | { type: 'planet'; name: string }
-    | null;
-
+type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
 
 const SolarSystem = () => {
     const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
-    const [focusedTarget, setFocusedTarget] = useState<FocusTarget>({ type: 'sun' }); // ✅ initial = sun
+    const [focusedTarget, setFocusedTarget] = useState<FocusTarget>({ type: 'sun' });
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
 
@@ -56,7 +52,11 @@ const SolarSystem = () => {
 
     return (
         <div className="relative">
-            <Canvas camera={{ position: [0, 10, 200], near: 0.1, far: 5000 }} style={{ height: '100vh' }} shadows>
+            <Canvas
+                camera={{ position: [0, 10, 200], near: 0.1, far: 5000 }}
+                style={{ height: '100vh' }}
+                shadows
+            >
                 <color attach="background" args={['#0D1117']} />
 
                 <EffectComposer>
@@ -80,6 +80,7 @@ const SolarSystem = () => {
                     onPlanetPosition={updatePlanetPosition}
                 />
 
+                {/* ✅ follow target but DO NOT fight zoom */}
                 <CameraController
                     controlsRef={controlsRef}
                     focusedTarget={focusedTarget}
@@ -87,12 +88,15 @@ const SolarSystem = () => {
                     getPlanetRadius={(name) => planetsByName.get(name)?.radius ?? 1}
                 />
 
+                {/* ✅ OrbitControls owns zoom (distance) */}
                 <OrbitControls
                     ref={controlsRef}
-                    maxDistance={1500}
-                    minDistance={30}
                     enableDamping
                     dampingFactor={0.08}
+                    maxDistance={1500}
+                    minDistance={30}
+                    enableZoom
+                    zoomSpeed={1.0}
                 />
 
                 <Environment preset="night" />
@@ -124,6 +128,11 @@ const BackgroundSphere = ({ texturePath }: { texturePath: string }) => {
     );
 };
 
+/**
+ * ✅ Follow controller that preserves user zoom:
+ * - Each frame: move OrbitControls target to the focused body
+ * - Keep the *current* camera distance (zoom), only clamp it to safe bounds
+ */
 const CameraController = ({
     controlsRef,
     focusedTarget,
@@ -138,35 +147,53 @@ const CameraController = ({
     const { camera } = useThree();
 
     const tmpTarget = useMemo(() => new THREE.Vector3(), []);
-    const tmpDir = useMemo(() => new THREE.Vector3(), []);
+    const tmpOffset = useMemo(() => new THREE.Vector3(), []);
     const tmpDesiredPos = useMemo(() => new THREE.Vector3(), []);
 
     useFrame(() => {
         if (!focusedTarget) return;
 
-        let desiredDistance = 220;
-
+        // 1) Resolve target position
         if (focusedTarget.type === 'sun') {
             tmpTarget.set(0, 0, 0);
-            desiredDistance = 220;
         } else {
             const live = getPlanetPosition(focusedTarget.name);
             if (!live) return;
-
             tmpTarget.copy(live);
-            desiredDistance = Math.max(20, getPlanetRadius(focusedTarget.name) * 14);
         }
 
-        tmpDir.copy(camera.position).sub(tmpTarget);
-        if (tmpDir.lengthSq() < 1e-6) tmpDir.set(0, 10, desiredDistance);
-        tmpDir.normalize();
-
-        tmpDesiredPos.copy(tmpTarget).add(tmpDir.multiplyScalar(desiredDistance));
-        camera.position.lerp(tmpDesiredPos, 0.12);
-
         const controls = controlsRef.current;
+
+        // 2) Determine current camera offset from target (this encodes zoom + angle)
+        // Prefer controls.object & controls.target if available
         if (controls) {
-            controls.target.lerp(tmpTarget, 0.18);
+            tmpOffset.copy(controls.object.position).sub(controls.target);
+        } else {
+            tmpOffset.copy(camera.position).sub(tmpTarget);
+        }
+
+        let distance = tmpOffset.length();
+
+        // 3) Clamp distance so you can’t zoom “into” the object
+        // Sun: give it a big-ish min distance, planets: based on radius
+        const minDistance =
+            focusedTarget.type === 'sun'
+                ? 60
+                : Math.max(8, getPlanetRadius(focusedTarget.name) * 3.2);
+
+        const maxDistance = 1500;
+
+        distance = THREE.MathUtils.clamp(distance, minDistance, maxDistance);
+
+        // 4) Rebuild desired camera position using the *same direction* but clamped distance
+        tmpOffset.normalize().multiplyScalar(distance);
+        tmpDesiredPos.copy(tmpTarget).add(tmpOffset);
+
+        // 5) Smoothly follow target + keep OrbitControls in sync
+        camera.position.lerp(tmpDesiredPos, 0.18);
+
+        if (controls) {
+            controls.target.lerp(tmpTarget, 0.22);
             controls.update();
         } else {
             camera.lookAt(tmpTarget);
@@ -199,7 +226,6 @@ const SolarSystemScene = ({
 
     return (
         <>
-            {/* ✅ Click Sun => focus Sun */}
             <mesh
                 ref={sunRef}
                 position={[0, 0, 0]}
