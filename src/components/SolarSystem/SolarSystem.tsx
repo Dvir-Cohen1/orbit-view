@@ -18,7 +18,35 @@ import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-const MAX_CAMERA_DISTANCE = 6000;
+const MAX_CAMERA_DISTANCE = 35000;
+
+/**
+ * ---------- Immersive realism knobs ----------
+ */
+const TIME_SCALE = 0.18;
+const ORBIT_POWER = 0.58;
+const ORBIT_MULT = 26;
+
+const SUN_VISUAL_RADIUS = 32;
+const SUN_REAL_RADIUS_KM = 696_340;
+
+const RADIUS_POWER = 0.42;
+const PLANET_MIN_RADIUS = 0.35;
+
+// ⭐ Starfield scaling (Oort Cloud vibe)
+const OUTER_STAR_PADDING = 1.8; // >1 pushes stars outside the farthest orbit
+const STAR_DEPTH_FACTOR = 0.65; // depth relative to radius (keeps a thick shell)
+
+const mapOrbitFromAvgDistance = (avgMillionKm?: number, fallback = 100) => {
+    const d = avgMillionKm ?? fallback;
+    return ORBIT_MULT * Math.pow(d, ORBIT_POWER);
+};
+
+const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
+    if (!realRadiusKm) return fallback;
+    const ratio = realRadiusKm / SUN_REAL_RADIUS_KM;
+    return Math.max(PLANET_MIN_RADIUS, SUN_VISUAL_RADIUS * Math.pow(ratio, RADIUS_POWER));
+};
 
 const useTexture = (path?: string) =>
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
@@ -33,7 +61,6 @@ const SolarSystem = () => {
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
-
     const planetPositionsRef = useRef<PlanetPositionStore>({});
 
     const planetsByName = useMemo(() => {
@@ -52,16 +79,28 @@ const SolarSystem = () => {
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
+    // ✅ compute farthest mapped orbit (Pluto / Neptune etc)
+    const outermostOrbit = useMemo(() => {
+        let max = 0;
+        for (const p of PLANETS) {
+            const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
+            if (orbit > max) max = orbit;
+        }
+        return max;
+    }, []);
+
+    // ✅ push stars outside the farthest orbit
+    const starRadius = outermostOrbit * OUTER_STAR_PADDING;
+    const starDepth = starRadius * STAR_DEPTH_FACTOR;
+
     return (
         <div className="relative">
             <Canvas
-                // camera={{ position: [0, 10, 200], near: 0.1, far: 5000 }}
                 camera={{ position: [0, 10, 200], near: 0.1, far: 20000 }}
                 gl={{ logarithmicDepthBuffer: true }}
                 style={{ height: '100vh' }}
                 shadows
             >
-                {/* ✅ Infinite pano background (cannot be escaped) */}
                 <Suspense fallback={null}>
                     <PanoramaBackground texturePath="/solar-system.png" />
                 </Suspense>
@@ -75,8 +114,8 @@ const SolarSystem = () => {
                 <pointLight position={[0, 0, 0]} intensity={2} castShadow />
                 <directionalLight position={[0, 20, 20]} intensity={1} castShadow />
 
-                {/* optional now, keep if you like */}
-                <Stars radius={1000} depth={480} count={8000} factor={6} />
+                {/* ✅ Stars now scale with your solar-system orbit scale */}
+                <Stars radius={starRadius} depth={starDepth} count={80000} factor={6} fade />
 
                 <SolarSystemScene
                     setSelectedPlanet={setSelectedPlanet}
@@ -91,7 +130,11 @@ const SolarSystem = () => {
                     controlsRef={controlsRef}
                     focusedTarget={focusedTarget}
                     getPlanetPosition={getPlanetPosition}
-                    getPlanetRadius={(name) => planetsByName.get(name)?.radius ?? 1}
+                    getPlanetRadius={(name) => {
+                        const p = planetsByName.get(name);
+                        if (!p) return 1;
+                        return mapRadiusFromReal((p as any).realRadius, p.radius);
+                    }}
                 />
 
                 <OrbitControls
@@ -99,9 +142,9 @@ const SolarSystem = () => {
                     enableDamping
                     dampingFactor={0.08}
                     maxDistance={MAX_CAMERA_DISTANCE}
-                    minDistance={30}
+                    minDistance={10}
                     enableZoom
-                    zoomSpeed={2.0}
+                    zoomSpeed={1.4}
                 />
 
                 <Environment preset="night" />
@@ -128,17 +171,9 @@ const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
     const { scene } = useThree();
 
     useEffect(() => {
-        // panorama sky setup
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
-
-        // sometimes needed to apply mapping change
         texture.needsUpdate = true;
-
-        // If your pano looks mirrored, uncomment:
-        // texture.wrapS = THREE.RepeatWrapping;
-        // texture.repeat.x = -1;
-
         scene.background = texture;
 
         return () => {
@@ -149,9 +184,6 @@ const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
     return null;
 };
 
-/**
- * Follow controller that preserves user zoom.
- */
 const CameraController = ({
     controlsRef,
     focusedTarget,
@@ -182,20 +214,17 @@ const CameraController = ({
 
         const controls = controlsRef.current;
 
-        if (controls) {
-            tmpOffset.copy(controls.object.position).sub(controls.target);
-        } else {
-            tmpOffset.copy(camera.position).sub(tmpTarget);
-        }
+        if (controls) tmpOffset.copy(controls.object.position).sub(controls.target);
+        else tmpOffset.copy(camera.position).sub(tmpTarget);
 
         let distance = tmpOffset.length();
 
         const minDistance =
-            focusedTarget.type === 'sun' ? 60 : Math.max(8, getPlanetRadius(focusedTarget.name) * 3.2);
+            focusedTarget.type === 'sun'
+                ? 140
+                : Math.max(10, getPlanetRadius(focusedTarget.name) * 6.0);
 
-        const maxDistance = MAX_CAMERA_DISTANCE;
-
-        distance = THREE.MathUtils.clamp(distance, minDistance, maxDistance);
+        distance = THREE.MathUtils.clamp(distance, minDistance, MAX_CAMERA_DISTANCE);
 
         tmpOffset.normalize().multiplyScalar(distance);
         tmpDesiredPos.copy(tmpTarget).add(tmpOffset);
@@ -244,21 +273,26 @@ const SolarSystemScene = ({
                     setSelectedPlanet(null);
                 }}
             >
-                <sphereGeometry args={[32, 32, 32]} />
-                <meshStandardMaterial emissive="white" emissiveIntensity={5} />
+                <sphereGeometry args={[SUN_VISUAL_RADIUS, 32, 32]} />
+                <meshStandardMaterial emissive="white" emissiveIntensity={8} color="#fff1cc" />
             </mesh>
 
-            {PLANETS.map((planet) => (
-                <mesh key={`${planet.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
-                    <ringGeometry args={[planet.distance - 0.2, planet.distance + 0.2, 128]} />
-                    <meshBasicMaterial color="#333" side={THREE.DoubleSide} transparent opacity={0.4} />
-                </mesh>
-            ))}
+            {PLANETS.map((p) => {
+                const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
+                return (
+                    <mesh key={`${p.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
+                        <ringGeometry args={[orbit - 0.2, orbit + 0.2, 128]} />
+                        <meshBasicMaterial color="#333" side={THREE.DoubleSide} transparent opacity={0.35} />
+                    </mesh>
+                );
+            })}
 
-            {PLANETS.map((planet) => (
+            {PLANETS.map((p) => (
                 <Planet
-                    key={planet.name}
-                    {...planet}
+                    key={p.name}
+                    {...(p as PlanetProps)}
+                    distance={mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance)}
+                    radius={mapRadiusFromReal((p as any).realRadius, p.radius)}
                     setSelectedPlanet={setSelectedPlanet}
                     setFocusedTarget={setFocusedTarget}
                     isCameraRotationEnabled={isCameraRotationEnabled}
@@ -283,7 +317,7 @@ const Planet = ({
     speed,
     color,
     texture,
-    hasRings,
+    angle,
     setSelectedPlanet,
     setFocusedTarget,
     isCameraRotationEnabled,
@@ -291,7 +325,6 @@ const Planet = ({
     focusedTarget,
     onPlanetPosition,
 }: PlanetProps & {
-    hasRings?: boolean;
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
     isCameraRotationEnabled: boolean;
@@ -300,9 +333,10 @@ const Planet = ({
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
 }) => {
     const groupRef = useRef<THREE.Group>(null);
+    const meshRef = useRef<THREE.Mesh>(null);
     const [hovered, setHovered] = useState(false);
-    const planetTexture = useTexture(texture);
 
+    const planetTexture = useTexture(texture);
     useCursor(hovered);
 
     const tmpWorld = useMemo(() => new THREE.Vector3(), []);
@@ -312,10 +346,16 @@ const Planet = ({
         if (!g) return;
 
         if (isCameraRotationEnabled) {
-            const time = clock.getElapsedTime() * speed;
-            const { x, z } = calculateOrbitPosition(time, distance);
-            g.position.set(x, 0, z);
+            const t = clock.getElapsedTime() * TIME_SCALE * speed;
+            const { x, z } = calculateOrbitPosition(t, distance);
+
+            const tilt = THREE.MathUtils.degToRad(angle ?? 0);
+            const y = Math.sin(t) * Math.sin(tilt) * (distance * 0.05);
+
+            g.position.set(x, y, z);
         }
+
+        if (meshRef.current) meshRef.current.rotation.y += 0.01;
 
         g.getWorldPosition(tmpWorld);
         onPlanetPosition(name, tmpWorld);
@@ -344,26 +384,19 @@ const Planet = ({
             }}
             scale={scale}
         >
-            <mesh castShadow receiveShadow>
+            <mesh ref={meshRef} castShadow receiveShadow>
                 <sphereGeometry args={[radius, 64, 64]} />
                 <meshStandardMaterial
                     map={planetTexture || null}
                     color={color || 'white'}
                     emissive={isFocused ? 'white' : color || 'white'}
-                    emissiveIntensity={isFocused ? 0.7 : 0.1}
+                    emissiveIntensity={isFocused ? 0.65 : 0.08}
+                    roughness={1}
+                    metalness={0}
                 />
             </mesh>
-
-            {hasRings && <PlanetRings radius={radius} />}
         </group>
     );
 };
-
-const PlanetRings = ({ radius }: { radius: number }) => (
-    <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[radius * 1.2, radius * 1.6, 64]} />
-        <meshBasicMaterial color="gold" side={THREE.DoubleSide} />
-    </mesh>
-);
 
 export default SolarSystem;
