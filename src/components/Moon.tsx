@@ -14,5 +14,4 @@ export default function Moon(props: any) {
         </group>
     );
 }
-
 useGLTF.preload('/models/Moon.glb');
