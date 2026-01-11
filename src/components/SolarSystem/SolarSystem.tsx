@@ -96,6 +96,9 @@ const SolarSystem = () => {
             <Canvas
                 camera={{ position: [0, 10, 200], near: 0.1, far: 20000 }}
                 gl={{ logarithmicDepthBuffer: true }}
+                onCreated={({ gl }) => {
+                    gl.toneMappingExposure = 0.8; // 👈 dimmer (try 0.7–0.9)
+                }}
                 style={{ height: '100vh' }}
                 shadows
             >
@@ -171,14 +174,21 @@ const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
     const { scene } = useThree();
 
     useEffect(() => {
+        // Modern three.js (r152+)
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.needsUpdate = true;
 
         scene.background = texture;
 
+        // ✅ THIS is the correct way to dim ONLY the background
+        scene.backgroundIntensity = 0.38;
+
         return () => {
-            if (scene.background === texture) scene.background = null;
+            if (scene.background === texture) {
+                scene.background = null;
+                scene.backgroundIntensity = 1;
+            }
         };
     }, [scene, texture]);
 
