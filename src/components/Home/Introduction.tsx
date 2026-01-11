@@ -18,7 +18,7 @@ const Introduction: React.FC = () => {
     const planets = useMemo(() => PLANETS.map((p) => p.name), []);
     const selectedPlanet = useMemo(() => PLANETS.find((p) => p.name === planet), [planet]);
 
-    const startBtnRef = useMagnetic<HTMLButtonElement>(0.18);
+    // const startBtnRef = useMagnetic<HTMLButtonElement>(0.18);
 
     const goExplore = () => router.push('/solar-system');
     const goPlanet = (name: string) => router.push(`/solar-system?focus=${encodeURIComponent(name)}`);
@@ -84,7 +84,7 @@ const Introduction: React.FC = () => {
                     <div className="mt-8 grid gap-3 sm:grid-cols-3">
                         {/* Start Exploring (launch feeling) */}
                         <button
-                            ref={startBtnRef}
+                            // ref={startBtnRef}
                             onClick={goExplore}
                             className="group relative overflow-hidden rounded-xl bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
                         >

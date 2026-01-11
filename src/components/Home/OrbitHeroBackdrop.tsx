@@ -8,12 +8,21 @@ type Props = { className?: string };
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+type TwinkleStar = {
+     x: number;
+     y: number;
+     size: number;
+     baseOpacity: number;
+     duration: number;
+     delay: number;
+     blur: number;
+};
+
 export default function OrbitHeroBackdrop({ className }: Props) {
      const ref = useRef<HTMLDivElement | null>(null);
 
-     // target from pointer
+     // pointer parallax
      const target = useRef({ x: 0, y: 0 });
-     // smoothed values
      const current = useRef({ x: 0, y: 0 });
      const rafId = useRef<number | null>(null);
 
@@ -28,8 +37,8 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                const r = el.getBoundingClientRect();
                if (r.width <= 0 || r.height <= 0) return;
 
-               const nx = (e.clientX - r.left) / r.width;  // 0..1
-               const ny = (e.clientY - r.top) / r.height;  // 0..1
+               const nx = (e.clientX - r.left) / r.width;
+               const ny = (e.clientY - r.top) / r.height;
 
                target.current.x = clamp((nx - 0.5) * 2, -1, 1);
                target.current.y = clamp((ny - 0.5) * 2, -1, 1);
@@ -44,11 +53,9 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           window.addEventListener('pointerleave', onLeave);
 
           const tick = () => {
-               // lerp for smooth motion, not twitchy
                current.current.x = lerp(current.current.x, target.current.x, 0.08);
                current.current.y = lerp(current.current.y, target.current.y, 0.08);
 
-               // write CSS vars once per frame
                el.style.setProperty('--px', current.current.x.toFixed(4));
                el.style.setProperty('--py', current.current.y.toFixed(4));
 
@@ -64,17 +71,19 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           };
      }, []);
 
+     // bulk stars (sharp)
      const starsSharp = useMemo(() => {
           const dots: string[] = [];
           for (let i = 0; i < 220; i++) {
                const x = Math.floor(Math.random() * 2400);
                const y = Math.floor(Math.random() * 1400);
-               const a = (0.28 + Math.random() * 0.72).toFixed(2); // brighter range
+               const a = (0.28 + Math.random() * 0.72).toFixed(2);
                dots.push(`${x}px ${y}px rgba(255,255,255,${a})`);
           }
           return dots.join(', ');
      }, []);
 
+     // bulk stars (glow)
      const starsGlow = useMemo(() => {
           const dots: string[] = [];
           for (let i = 0; i < 70; i++) {
@@ -85,6 +94,27 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           }
           return dots.join(', ');
      }, []);
+
+     // twinkle stars (individual nodes)
+     const twinkles = useMemo<TwinkleStar[]>(() => {
+          const arr: TwinkleStar[] = [];
+          const count = 24;
+
+          for (let i = 0; i < count; i++) {
+               arr.push({
+                    x: Math.random() * 100, // percent
+                    y: Math.random() * 100, // percent
+                    size: 1.4 + Math.random() * 1.8, // px
+                    baseOpacity: 0.25 + Math.random() * 0.45,
+                    duration: 1.8 + Math.random() * 2.8, // sec
+                    delay: Math.random() * 2.5, // sec
+                    blur: Math.random() < 0.55 ? 0.8 : 0.2,
+               });
+          }
+
+          return arr;
+     }, []);
+
      const PX = 'var(--px, 0)';
      const PY = 'var(--py, 0)';
 
@@ -93,8 +123,8 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                ref={ref}
                className={['pointer-events-none absolute inset-0 overflow-hidden', className ?? ''].join(' ')}
           >
-               {/* deep vignette */}
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),rgba(0,0,0,0.92)_60%,rgba(0,0,0,0.98))]" />
+               {/* deep vignette (slightly lighter so stars pop) */}
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.10),rgba(0,0,0,0.88)_60%,rgba(0,0,0,0.94))]" />
 
                {/* nebula layers */}
                <div
@@ -131,7 +161,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                     <div className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-white/90 shadow-[0_0_18px_rgba(255,255,255,0.65)]" />
                </div>
 
-               {/* procedural stars: 1px seed + big box-shadow field */}
+               {/* bulk stars: sharp layer */}
                <div
                     className="absolute left-0 top-0 h-[2px] w-[2px] opacity-90"
                     style={{
@@ -141,6 +171,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                     }}
                />
 
+               {/* bulk stars: glow layer */}
                <div
                     className="absolute left-0 top-0 h-[2px] w-[2px] opacity-45 blur-[0.8px]"
                     style={{
@@ -149,8 +180,52 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                          transform: `translate3d(calc(${PX} * -6px), calc(${PY} * -5px), 0)`,
                     }}
                />
+
+               {/* twinkling stars */}
+               <div
+                    className="absolute inset-0"
+                    style={{
+                         transform: `translate3d(calc(${PX} * -7px), calc(${PY} * -6px), 0)`,
+                    }}
+               >
+                    {twinkles.map((s, idx) => (
+                         <span
+                              key={idx}
+                              className="absolute rounded-full bg-white"
+                              style={{
+                                   left: `${s.x}%`,
+                                   top: `${s.y}%`,
+                                   width: `${s.size}px`,
+                                   height: `${s.size}px`,
+                                   opacity: s.baseOpacity,
+                                   filter: `blur(${s.blur}px)`,
+                                   boxShadow: '0 0 22px rgba(255,255,255,0.35)',
+                                   animation: `ov-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
+                              }}
+                         />
+                    ))}
+               </div>
+
                {/* scanlines */}
                <div className="absolute inset-0 opacity-[0.06] [background:linear-gradient(to_bottom,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:100%_6px]" />
+
+               {/* local keyframes (scoped via name) */}
+               <style jsx>{`
+        @keyframes ov-twinkle {
+          0% {
+            opacity: 0.15;
+            transform: scale(0.95);
+          }
+          40% {
+            opacity: 0.9;
+            transform: scale(1.35);
+          }
+          100% {
+            opacity: 0.2;
+            transform: scale(1.0);
+          }
+        }
+      `}</style>
           </div>
      );
 }
