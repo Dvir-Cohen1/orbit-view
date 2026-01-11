@@ -1,26 +1,13 @@
+// src/app/(pages)/layout.tsx
 'use client';
-import type { Metadata } from 'next';
-import { poppins, nunito_sans } from '@/lib/fonts';
-import '@/styles/globals.css';
-import { useTheme } from '@/context/ThemeContext';
-import Footer from '@/components/Layout/Footer';
-import Header from '@/components/Layout/Header';
 
+import React from 'react';
 import { NavigationProvider } from '@/context/NavigationContext';
 
-export default function RootLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
-    const { theme } = useTheme();
+export default function PagesLayout({ children }: { children: React.ReactNode }) {
     return (
-        <body className={`${theme} flex min-h-screen flex-col text-primary-text`}>
-            <NavigationProvider>
-                {/* <Header /> */}
-                <main>{children}</main>
-                {/* <Footer /> */}
-            </NavigationProvider>
-        </body>
+        <NavigationProvider>
+            <main className="flex-1">{children}</main>
+        </NavigationProvider>
     );
 }

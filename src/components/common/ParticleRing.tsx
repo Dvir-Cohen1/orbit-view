@@ -20,7 +20,7 @@ const ParticleRing = () => {
                     position: [100, -7.5, -95],
                 }}
                 style={{ height: '100vh' }}
-                //  className='bg-slate-900'
+            //  className='bg-slate-900'
             >
                 {/* <pointLight position={[-300, 10, -60]} power={6.0} /> */}
                 <OrbitControls maxDistance={85} minDistance={2} />
@@ -40,21 +40,17 @@ const ParticleRing = () => {
 };
 
 const PointCircle = () => {
-    const ref1: any = useRef(null);
-    const ref2: any = useRef(null);
+    const ref1 = useRef<any>(null);
+    const ref2 = useRef<any>(null);
 
     useFrame(({ clock }) => {
-        if (ref1.current?.rotation) {
-            ref1.current.rotation.z = clock.getElapsedTime() * 0.05;
+        const t = clock.getElapsedTime();
+        if (ref1.current) {
+            ref1.current.rotation.z = t * 0.05;
         }
-    });
-
-    useFrame(({ clock }) => {
-        if (ref2.current?.rotation) {
-            // ref2.current.rotation.z = clock.getElapsedTime() * 0.9;
-            ref2.current.rotation.x = clock.getElapsedTime() * 0.09;
-            ref2.current.rotation.y = clock.getElapsedTime() * 0.09;
-            // ref1.current.rotation.z = clock.getElapsedTime() * 0.05;
+        if (ref2.current) {
+            ref2.current.rotation.x = t * 0.09;
+            ref2.current.rotation.y = t * 0.09;
         }
     });
 
