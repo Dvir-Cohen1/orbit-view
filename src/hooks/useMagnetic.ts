@@ -1,12 +1,17 @@
+// useMagnetic.ts
 'use client';
+
 import { useEffect, useRef } from 'react';
 
-export function useMagnetic<T extends HTMLElement>(strength = 0.25) {
+export function useMagnetic<T extends HTMLElement>(strength = 0.22) {
   const ref = useRef<T | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    el.style.willChange = 'transform';
+    el.style.transition = 'transform 140ms ease';
 
     const onMove = (e: PointerEvent) => {
       const rect = el.getBoundingClientRect();
