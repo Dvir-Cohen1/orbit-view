@@ -18,7 +18,7 @@ import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-const MAX_CAMERA_DISTANCE = 35000;
+const MAX_CAMERA_DISTANCE = 20000;
 
 /**
  * ---------- Immersive realism knobs ----------
@@ -33,15 +33,17 @@ const SUN_REAL_RADIUS_KM = 696_340;
 const RADIUS_POWER = 0.42;
 const PLANET_MIN_RADIUS = 0.35;
 
-// ⭐ Starfield scaling (Oort Cloud vibe)
-const OUTER_STAR_PADDING = 1.8; // >1 pushes stars outside the farthest orbit
-const STAR_DEPTH_FACTOR = 0.65; // depth relative to radius (keeps a thick shell)
-
+/**
+ * Map real-ish distances (million km) into explorable world units
+ */
 const mapOrbitFromAvgDistance = (avgMillionKm?: number, fallback = 100) => {
     const d = avgMillionKm ?? fallback;
     return ORBIT_MULT * Math.pow(d, ORBIT_POWER);
 };
 
+/**
+ * Map real radius (km) into usable planet radii while keeping proportions
+ */
 const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
     if (!realRadiusKm) return fallback;
     const ratio = realRadiusKm / SUN_REAL_RADIUS_KM;
@@ -79,7 +81,7 @@ const SolarSystem = () => {
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
-    // ✅ compute farthest mapped orbit (Pluto / Neptune etc)
+    // ✅ compute farthest mapped orbit so stars always stay outside
     const outermostOrbit = useMemo(() => {
         let max = 0;
         for (const p of PLANETS) {
@@ -89,10 +91,6 @@ const SolarSystem = () => {
         return max;
     }, []);
 
-    // ✅ push stars outside the farthest orbit
-    const starRadius = outermostOrbit * OUTER_STAR_PADDING;
-    const starDepth = starRadius * STAR_DEPTH_FACTOR;
-
     return (
         <div className="relative">
             <Canvas
@@ -101,6 +99,7 @@ const SolarSystem = () => {
                 style={{ height: '100vh' }}
                 shadows
             >
+                {/* Infinite panorama background */}
                 <Suspense fallback={null}>
                     <PanoramaBackground texturePath="/solar-system.png" />
                 </Suspense>
@@ -114,8 +113,8 @@ const SolarSystem = () => {
                 <pointLight position={[0, 0, 0]} intensity={2} castShadow />
                 <directionalLight position={[0, 20, 20]} intensity={1} castShadow />
 
-                {/* ✅ Stars now scale with your solar-system orbit scale */}
-                <Stars radius={starRadius} depth={starDepth} count={80000} factor={6} fade />
+                {/* ✅ True "Oort Cloud shell" (2 thin star shells) */}
+                <OortCloud outermostOrbit={outermostOrbit} />
 
                 <SolarSystemScene
                     setSelectedPlanet={setSelectedPlanet}
@@ -126,6 +125,7 @@ const SolarSystem = () => {
                     onPlanetPosition={updatePlanetPosition}
                 />
 
+                {/* Follow target but preserve user zoom */}
                 <CameraController
                     controlsRef={controlsRef}
                     focusedTarget={focusedTarget}
@@ -174,6 +174,7 @@ const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.needsUpdate = true;
+
         scene.background = texture;
 
         return () => {
@@ -184,6 +185,47 @@ const PanoramaBackground = ({ texturePath }: { texturePath: string }) => {
     return null;
 };
 
+/**
+ * ✅ "True Oort Cloud shell":
+ * Two thin shells far outside the farthest planet orbit.
+ * depth kept small => a shell, not a filled star volume.
+ */
+const OortCloud = ({ outermostOrbit }: { outermostOrbit: number }) => {
+    const innerRadius = outermostOrbit * 2.1;
+    const innerDepth = innerRadius * 0.08;
+
+    const outerRadius = outermostOrbit * 2.9;
+    const outerDepth = outerRadius * 0.06;
+
+    return (
+        <>
+            {/* Inner shell (denser) */}
+            <Stars
+                radius={innerRadius}
+                depth={innerDepth}
+                count={7000}
+                factor={4.5}
+                fade
+                speed={0.2}
+            />
+
+            {/* Outer shell (sparser) */}
+            <Stars
+                radius={outerRadius}
+                depth={outerDepth}
+                count={4500}
+                factor={6.5}
+                fade
+                speed={0.12}
+            />
+        </>
+    );
+};
+
+/**
+ * Follow controller that preserves user zoom.
+ * It adjusts OrbitControls target (planet/sun), but keeps the current camera distance.
+ */
 const CameraController = ({
     controlsRef,
     focusedTarget,
@@ -265,6 +307,7 @@ const SolarSystemScene = ({
 
     return (
         <>
+            {/* Sun */}
             <mesh
                 ref={sunRef}
                 position={[0, 0, 0]}
@@ -277,16 +320,23 @@ const SolarSystemScene = ({
                 <meshStandardMaterial emissive="white" emissiveIntensity={8} color="#fff1cc" />
             </mesh>
 
+            {/* Orbits (real-ish distances compressed) */}
             {PLANETS.map((p) => {
                 const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
                 return (
                     <mesh key={`${p.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
                         <ringGeometry args={[orbit - 0.2, orbit + 0.2, 128]} />
-                        <meshBasicMaterial color="#333" side={THREE.DoubleSide} transparent opacity={0.35} />
+                        <meshBasicMaterial
+                            color="#333"
+                            side={THREE.DoubleSide}
+                            transparent
+                            opacity={0.35}
+                        />
                     </mesh>
                 );
             })}
 
+            {/* Planets (real radii + compressed distances) */}
             {PLANETS.map((p) => (
                 <Planet
                     key={p.name}
@@ -349,12 +399,14 @@ const Planet = ({
             const t = clock.getElapsedTime() * TIME_SCALE * speed;
             const { x, z } = calculateOrbitPosition(t, distance);
 
+            // Subtle orbital inclination using your "angle" degrees
             const tilt = THREE.MathUtils.degToRad(angle ?? 0);
             const y = Math.sin(t) * Math.sin(tilt) * (distance * 0.05);
 
             g.position.set(x, y, z);
         }
 
+        // Axial spin
         if (meshRef.current) meshRef.current.rotation.y += 0.01;
 
         g.getWorldPosition(tmpWorld);
