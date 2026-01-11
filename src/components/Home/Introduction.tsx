@@ -11,6 +11,8 @@ import { PLANETS } from '@/constants/solarSystem.constants';
 import OrbitHeroBackdrop from './OrbitHeroBackdrop';
 import { useMagnetic } from '@/hooks/useMagnetic';
 
+const QUICK_PICKS = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn'] as const;
+
 const Introduction: React.FC = () => {
     const router = useRouter();
     const [planet, setPlanet] = useState<string>('Earth');
@@ -18,7 +20,8 @@ const Introduction: React.FC = () => {
     const planets = useMemo(() => PLANETS.map((p) => p.name), []);
     const selectedPlanet = useMemo(() => PLANETS.find((p) => p.name === planet), [planet]);
 
-    // const startBtnRef = useMagnetic<HTMLButtonElement>(0.18);
+    // subtle magnetic (avoid heavy strength = less jitter)
+    const startBtnRef = useMagnetic<HTMLButtonElement>(0.12);
 
     const goExplore = () => router.push('/solar-system');
     const goPlanet = (name: string) => router.push(`/solar-system?focus=${encodeURIComponent(name)}`);
@@ -27,6 +30,11 @@ const Introduction: React.FC = () => {
         const pick = planets[Math.floor(Math.random() * planets.length)];
         setPlanet(pick);
         goPlanet(pick);
+    };
+
+    const onQuickPick = (name: string) => {
+        setPlanet(name);
+        goPlanet(name);
     };
 
     return (
@@ -42,23 +50,38 @@ const Introduction: React.FC = () => {
                     {/* top mini label */}
                     <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs text-white/70">
                         <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--blue)] shadow-[0_0_14px_rgba(68,188,255,0.55)]" />
-                        LIVE ORBIT SIMULATOR
+                        INTERACTIVE PLANETARIUM
                     </div>
 
                     <h1 className="leading-tight">
                         <TextShadow title="OrbitView" coloredTitle="." />
                     </h1>
 
-                    <h4 className="mt-3 text-white/90">
-                        Explore the cosmos, one <span className="text-[var(--blue)]">orbit</span> at a time.
-                    </h4>
+                    {/* Option C copy */}
+                    <h4 className="mt-3 text-white/90">Your pocket planetarium—built to be touched.</h4>
 
                     <p className="mx-auto mt-4 max-w-xl text-lg text-white/70">
-                        A 3D solar system simulation built with React and Three.js — curated exploration, fast focus,
-                        and cinematic motion.
+                        Spin, zoom, and lock onto planets with buttery motion. Labels on hover. Details on click. A little science,
+                        a lot of vibe.
                     </p>
 
-                    {/* planet preview chips */}
+                    {/* micro stat tiles */}
+                    <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 gap-2 text-xs text-white/60">
+                        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-white/80">Controls</div>
+                            <div>Drag • Zoom • Click</div>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-white/80">Discover</div>
+                            <div>Hover for names</div>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                            <div className="text-white/80">Focus</div>
+                            <div>Instant lock-on</div>
+                        </div>
+                    </div>
+
+                    {/* selected planet chips */}
                     <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
                             {selectedPlanet?.icon && (
@@ -77,14 +100,30 @@ const Introduction: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* quick picks */}
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {QUICK_PICKS.map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => onQuickPick(p)}
+                                className={[
+                                    'rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition',
+                                    p === planet ? 'bg-white/12 text-white' : 'hover:bg-white/10',
+                                ].join(' ')}
+                            >
+                                {p}
+                            </button>
+                        ))}
+                    </div>
+
                     {/* divider */}
                     <div className="mx-auto mt-8 h-px w-full max-w-xl bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
                     {/* actions */}
                     <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                        {/* Start Exploring (launch feeling) */}
+                        {/* Start Exploring */}
                         <button
-                            // ref={startBtnRef}
+                            ref={startBtnRef}
                             onClick={goExplore}
                             className="group relative overflow-hidden rounded-xl bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
                         >
@@ -131,10 +170,16 @@ const Introduction: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* micro-interaction hint */}
-                    <p className="pt-3 text-xs text-white/45">
-                        Tip: Hover planets in the simulator to reveal labels — click to focus.
-                    </p>
+                    {/* clearer UX hint */}
+                    <p className="pt-3 text-xs text-white/50">Drag to orbit • Scroll to zoom • Hover for names • Click to focus</p>
+                </div>
+
+                {/* subtle scroll cue (optional, feels like a real landing page) */}
+                <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-white/35">
+                    <div className="flex flex-col items-center gap-2 text-xs">
+                        <span>Scroll</span>
+                        <span className="h-6 w-px bg-white/25" />
+                    </div>
                 </div>
 
                 <Footer />

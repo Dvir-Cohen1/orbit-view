@@ -21,7 +21,6 @@ type TwinkleStar = {
 export default function OrbitHeroBackdrop({ className }: Props) {
      const ref = useRef<HTMLDivElement | null>(null);
 
-     // pointer parallax
      const target = useRef({ x: 0, y: 0 });
      const current = useRef({ x: 0, y: 0 });
      const rafId = useRef<number | null>(null);
@@ -71,7 +70,6 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           };
      }, []);
 
-     // bulk stars (sharp)
      const starsSharp = useMemo(() => {
           const dots: string[] = [];
           for (let i = 0; i < 220; i++) {
@@ -83,7 +81,6 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           return dots.join(', ');
      }, []);
 
-     // bulk stars (glow)
      const starsGlow = useMemo(() => {
           const dots: string[] = [];
           for (let i = 0; i < 70; i++) {
@@ -95,19 +92,18 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           return dots.join(', ');
      }, []);
 
-     // twinkle stars (individual nodes)
      const twinkles = useMemo<TwinkleStar[]>(() => {
           const arr: TwinkleStar[] = [];
           const count = 24;
 
           for (let i = 0; i < count; i++) {
                arr.push({
-                    x: Math.random() * 100, // percent
-                    y: Math.random() * 100, // percent
-                    size: 1.4 + Math.random() * 1.8, // px
+                    x: Math.random() * 100,
+                    y: Math.random() * 100,
+                    size: 1.4 + Math.random() * 1.8,
                     baseOpacity: 0.25 + Math.random() * 0.45,
-                    duration: 1.8 + Math.random() * 2.8, // sec
-                    delay: Math.random() * 2.5, // sec
+                    duration: 1.8 + Math.random() * 2.8,
+                    delay: Math.random() * 2.5,
                     blur: Math.random() < 0.55 ? 0.8 : 0.2,
                });
           }
@@ -123,7 +119,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                ref={ref}
                className={['pointer-events-none absolute inset-0 overflow-hidden', className ?? ''].join(' ')}
           >
-               {/* deep vignette (slightly lighter so stars pop) */}
+               {/* deep vignette */}
                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.10),rgba(0,0,0,0.88)_60%,rgba(0,0,0,0.94))]" />
 
                {/* nebula layers */}
@@ -161,7 +157,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                     <div className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-white/90 shadow-[0_0_18px_rgba(255,255,255,0.65)]" />
                </div>
 
-               {/* bulk stars: sharp layer */}
+               {/* bulk stars: sharp */}
                <div
                     className="absolute left-0 top-0 h-[2px] w-[2px] opacity-90"
                     style={{
@@ -171,7 +167,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                     }}
                />
 
-               {/* bulk stars: glow layer */}
+               {/* bulk stars: glow */}
                <div
                     className="absolute left-0 top-0 h-[2px] w-[2px] opacity-45 blur-[0.8px]"
                     style={{
@@ -209,7 +205,6 @@ export default function OrbitHeroBackdrop({ className }: Props) {
                {/* scanlines */}
                <div className="absolute inset-0 opacity-[0.06] [background:linear-gradient(to_bottom,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:100%_6px]" />
 
-               {/* local keyframes (scoped via name) */}
                <style jsx>{`
         @keyframes ov-twinkle {
           0% {
@@ -222,7 +217,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           }
           100% {
             opacity: 0.2;
-            transform: scale(1.0);
+            transform: scale(1);
           }
         }
       `}</style>
