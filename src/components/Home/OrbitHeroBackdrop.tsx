@@ -64,18 +64,27 @@ export default function OrbitHeroBackdrop({ className }: Props) {
           };
      }, []);
 
-     const stars = useMemo(() => {
+     const starsSharp = useMemo(() => {
           const dots: string[] = [];
-          // generate more + larger bounds so it doesn't “end” on big screens
-          for (let i = 0; i < 140; i++) {
+          for (let i = 0; i < 220; i++) {
                const x = Math.floor(Math.random() * 2400);
                const y = Math.floor(Math.random() * 1400);
-               const a = (0.12 + Math.random() * 0.65).toFixed(2);
+               const a = (0.28 + Math.random() * 0.72).toFixed(2); // brighter range
                dots.push(`${x}px ${y}px rgba(255,255,255,${a})`);
           }
           return dots.join(', ');
      }, []);
 
+     const starsGlow = useMemo(() => {
+          const dots: string[] = [];
+          for (let i = 0; i < 70; i++) {
+               const x = Math.floor(Math.random() * 2400);
+               const y = Math.floor(Math.random() * 1400);
+               const a = (0.18 + Math.random() * 0.42).toFixed(2);
+               dots.push(`${x}px ${y}px rgba(255,255,255,${a})`);
+          }
+          return dots.join(', ');
+     }, []);
      const PX = 'var(--px, 0)';
      const PY = 'var(--py, 0)';
 
@@ -124,13 +133,22 @@ export default function OrbitHeroBackdrop({ className }: Props) {
 
                {/* procedural stars: 1px seed + big box-shadow field */}
                <div
-                    className="absolute left-0 top-0 h-px w-px opacity-60 blur-[0.2px]"
+                    className="absolute left-0 top-0 h-[2px] w-[2px] opacity-90"
                     style={{
-                         boxShadow: stars,
-                         transform: `translate3d(calc(${PX} * -8px), calc(${PY} * -6px), 0)`,
+                         background: 'rgba(255,255,255,0.9)',
+                         boxShadow: starsSharp,
+                         transform: `translate3d(calc(${PX} * -10px), calc(${PY} * -8px), 0)`,
                     }}
                />
 
+               <div
+                    className="absolute left-0 top-0 h-[2px] w-[2px] opacity-45 blur-[0.8px]"
+                    style={{
+                         background: 'rgba(255,255,255,0.6)',
+                         boxShadow: starsGlow,
+                         transform: `translate3d(calc(${PX} * -6px), calc(${PY} * -5px), 0)`,
+                    }}
+               />
                {/* scanlines */}
                <div className="absolute inset-0 opacity-[0.06] [background:linear-gradient(to_bottom,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:100%_6px]" />
           </div>
