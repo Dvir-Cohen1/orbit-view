@@ -11,6 +11,8 @@ import {
     useCursor,
     useTexture as useTextureDrei,
     Trail,
+    Billboard,
+    Text,
 } from '@react-three/drei';
 import * as THREE from 'three';
 import PlanetMenu from './PlanetMenu';
@@ -19,7 +21,7 @@ import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-const MAX_CAMERA_DISTANCE = 20000;
+const MAX_CAMERA_DISTANCE = 51000;
 
 /**
  * ---------- Immersive realism knobs ----------
@@ -82,7 +84,6 @@ const SolarSystem = () => {
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
-    // farthest mapped orbit => Oort stays outside
     const outermostOrbit = useMemo(() => {
         let max = 0;
         for (const p of PLANETS) {
@@ -103,7 +104,6 @@ const SolarSystem = () => {
                 style={{ height: '100vh' }}
                 shadows
             >
-                {/* Background + drift */}
                 <Suspense fallback={null}>
                     <PanoramaBackground texturePath="/solar-system.png" driftSpeed={0.0025} />
                 </Suspense>
@@ -118,10 +118,7 @@ const SolarSystem = () => {
                 <pointLight position={[0, 0, 0]} intensity={2} castShadow />
                 <directionalLight position={[0, 20, 20]} intensity={1} castShadow />
 
-                {/* Oort shells */}
                 <OortCloud outermostOrbit={outermostOrbit} />
-
-                {/* Dust plane */}
                 <GalacticDustPlane outermostOrbit={outermostOrbit} />
 
                 <SolarSystemScene
@@ -173,9 +170,6 @@ const SolarSystem = () => {
     );
 };
 
-/**
- * Panorama + slow drift
- */
 const PanoramaBackground = ({
     texturePath,
     driftSpeed = 0.0,
@@ -220,24 +214,8 @@ const OortCloud = ({ outermostOrbit }: { outermostOrbit: number }) => {
 
     return (
         <>
-            <Stars
-                radius={innerRadius}
-                depth={innerDepth}
-                count={6500}
-                factor={3.2}
-                saturation={0.2}
-                fade
-                speed={0.15}
-            />
-            <Stars
-                radius={outerRadius}
-                depth={outerDepth}
-                count={4200}
-                factor={4.0}
-                saturation={0.15}
-                fade
-                speed={0.1}
-            />
+            <Stars radius={innerRadius} depth={innerDepth} count={6500} factor={3.2} saturation={0.2} fade speed={0.15} />
+            <Stars radius={outerRadius} depth={outerDepth} count={4200} factor={4.0} saturation={0.15} fade speed={0.1} />
         </>
     );
 };
@@ -290,7 +268,6 @@ function createDustTexture(size = 512) {
     for (let i = 0; i < 2200; i++) {
         const x = Math.random() * size;
         const y = Math.random() * size;
-
         const r = 6 + Math.random() * 60;
         const a = Math.random() * 0.045;
 
@@ -317,9 +294,6 @@ function createDustTexture(size = 512) {
     return tex;
 }
 
-/**
- * Follow controller preserves user zoom.
- */
 const CameraController = ({
     controlsRef,
     focusedTarget,
@@ -390,21 +364,16 @@ const SolarSystemScene = ({
 }) => {
     const sunRef = useRef<THREE.Group>(null);
     const sunMatRef = useRef<THREE.MeshStandardMaterial>(null);
-
-    // ✅ Sun corona materials
     const coronaMatRef = useRef<THREE.MeshBasicMaterial>(null);
     const haloMatRef = useRef<THREE.MeshBasicMaterial>(null);
 
     useFrame(({ clock }) => {
-        // gentle sun spin
         if (sunRef.current) sunRef.current.rotation.y += 0.002;
 
-        // ✅ subtle flicker (emissive intensity)
         const t = clock.getElapsedTime();
         const flicker = 8 + Math.sin(t * 1.7) * 0.25 + Math.sin(t * 7.3) * 0.12;
         if (sunMatRef.current) sunMatRef.current.emissiveIntensity = flicker;
 
-        // ✅ corona breathing (tiny)
         const breathe = 1 + Math.sin(t * 1.2) * 0.01;
         if (coronaMatRef.current) coronaMatRef.current.opacity = 0.14 * breathe;
         if (haloMatRef.current) haloMatRef.current.opacity = 0.08 * breathe;
@@ -412,7 +381,6 @@ const SolarSystemScene = ({
 
     return (
         <>
-            {/* ✅ Sun (group: core + corona + halo) */}
             <group
                 ref={sunRef}
                 position={[0, 0, 0]}
@@ -421,18 +389,11 @@ const SolarSystemScene = ({
                     setSelectedPlanet(null);
                 }}
             >
-                {/* Core */}
                 <mesh castShadow receiveShadow>
                     <sphereGeometry args={[SUN_VISUAL_RADIUS, 48, 48]} />
-                    <meshStandardMaterial
-                        ref={sunMatRef}
-                        emissive="white"
-                        emissiveIntensity={8}
-                        color="#fff1cc"
-                    />
+                    <meshStandardMaterial ref={sunMatRef} emissive="white" emissiveIntensity={8} color="#fff1cc" />
                 </mesh>
 
-                {/* Corona (soft glow) */}
                 <mesh>
                     <sphereGeometry args={[SUN_VISUAL_RADIUS * 1.18, 48, 48]} />
                     <meshBasicMaterial
@@ -445,7 +406,6 @@ const SolarSystemScene = ({
                     />
                 </mesh>
 
-                {/* Outer halo (even softer) */}
                 <mesh>
                     <sphereGeometry args={[SUN_VISUAL_RADIUS * 1.45, 48, 48]} />
                     <meshBasicMaterial
@@ -459,7 +419,6 @@ const SolarSystemScene = ({
                 </mesh>
             </group>
 
-            {/* Orbits */}
             {PLANETS.map((p) => {
                 const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
                 return (
@@ -470,7 +429,6 @@ const SolarSystemScene = ({
                 );
             })}
 
-            {/* Planets */}
             {PLANETS.map((p) => (
                 <Planet
                     key={p.name}
@@ -484,6 +442,7 @@ const SolarSystemScene = ({
                     focusedTarget={focusedTarget}
                     onPlanetPosition={onPlanetPosition}
                     angle={(p as any).angle}
+                    hasRings={(p as any).hasRings}
                 />
             ))}
         </>
@@ -495,13 +454,6 @@ const calculateOrbitPosition = (time: number, distance: number) => ({
     z: Math.sin(time) * distance,
 });
 
-/**
- * ✅ Planet with:
- * - orbit motion
- * - axial spin
- * - orbit trail
- * - optional Earth Moon
- */
 const Planet = ({
     name,
     radius,
@@ -510,6 +462,7 @@ const Planet = ({
     color,
     texture,
     angle,
+    hasRings,
     setSelectedPlanet,
     setFocusedTarget,
     isCameraRotationEnabled,
@@ -524,6 +477,7 @@ const Planet = ({
     focusedTarget: FocusTarget;
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
     angle?: number;
+    hasRings?: boolean;
 }) => {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef = useRef<THREE.Mesh>(null);
@@ -550,7 +504,6 @@ const Planet = ({
             g.position.set(x, y, z);
         }
 
-        // axial spin
         if (meshRef.current) meshRef.current.rotation.y += 0.01;
 
         g.getWorldPosition(tmpWorld);
@@ -563,9 +516,6 @@ const Planet = ({
     };
 
     const scale = isFocused ? 1.35 : isSelected ? 1.25 : hovered ? 1.12 : 1;
-
-    // ✅ trail tuning:
-    // length in frames-ish; lower = shorter trail
     const trailLength = 10;
     const trailWidth = Math.max(0.08, radius * 0.08);
 
@@ -583,7 +533,7 @@ const Planet = ({
             }}
             scale={scale}
         >
-            {/* ✅ Orbit Trail */}
+            {/* Orbit trail + planet */}
             <Trail
                 width={trailWidth}
                 length={trailLength}
@@ -605,39 +555,164 @@ const Planet = ({
                 </mesh>
             </Trail>
 
-            {/* ✅ 1 Moon for Earth */}
+            {/* ✅ Jupiter atmosphere glow */}
+            {name === 'Jupiter' && <JupiterAtmosphere radius={radius} />}
+
+            {/* ✅ Saturn rings (real ring mesh) */}
+            {hasRings && <SaturnRings planetRadius={radius} />}
+
+            {/* ✅ 3D hover tooltip */}
+            {hovered && <PlanetTooltip name={name} radius={radius} color={color} />}
+            {/* Earth moon stays (your existing) */}
             {name === 'Earth' && <EarthMoon earthRadius={radius} />}
         </group>
     );
 };
 
 /**
- * ✅ Simple Moon orbiting Earth (lightweight + looks great)
+ * ✅ Saturn rings: ringGeometry + procedural band texture + slight tilt
  */
+const SaturnRings = ({ planetRadius }: { planetRadius: number }) => {
+    const tex = useMemo(() => createSaturnRingsTexture(1024), []);
+    const inner = planetRadius * 1.35;
+    const outer = planetRadius * 2.35;
+
+    return (
+        <mesh rotation={[THREE.MathUtils.degToRad(78), 0, 0]} renderOrder={2}>
+            <ringGeometry args={[inner, outer, 256, 1]} />
+            <meshBasicMaterial
+                map={tex}
+                transparent
+                opacity={0.9}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                blending={THREE.NormalBlending}
+            />
+        </mesh>
+    );
+};
+
+function createSaturnRingsTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        const fallback = new THREE.Texture();
+        fallback.needsUpdate = true;
+        return fallback;
+    }
+
+    // horizontal band gradient (we'll sample it radially via UVs in ring)
+    const g = ctx.createLinearGradient(0, 0, size, 0);
+
+    // dark -> bright -> dark bands
+    g.addColorStop(0.0, 'rgba(130,110,85,0)');
+    g.addColorStop(0.08, 'rgba(170,150,120,0.25)');
+    g.addColorStop(0.18, 'rgba(210,190,160,0.55)');
+    g.addColorStop(0.30, 'rgba(240,220,190,0.35)');
+    g.addColorStop(0.45, 'rgba(200,180,150,0.50)');
+    g.addColorStop(0.62, 'rgba(240,225,200,0.30)');
+    g.addColorStop(0.78, 'rgba(190,170,140,0.25)');
+    g.addColorStop(1.0, 'rgba(130,110,85,0)');
+
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, canvas.height);
+
+    // add some subtle noise specks
+    const img = ctx.getImageData(0, 0, size, canvas.height);
+    const data = img.data;
+    for (let i = 0; i < data.length; i += 4) {
+        const n = (Math.random() - 0.5) * 18;
+        data[i] = Math.min(255, Math.max(0, data[i] + n));
+        data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + n));
+        data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + n));
+    }
+    ctx.putImageData(img, 0, 0);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+/**
+ * ✅ Jupiter atmosphere: additive halo that softly breathes
+ */
+const JupiterAtmosphere = ({ radius }: { radius: number }) => {
+    const matRef = useRef<THREE.MeshBasicMaterial>(null);
+
+    useFrame(({ clock }) => {
+        const t = clock.getElapsedTime();
+        const breathe = 1 + Math.sin(t * 0.9) * 0.03;
+        if (matRef.current) matRef.current.opacity = 0.12 * breathe;
+    });
+
+    return (
+        <mesh renderOrder={1}>
+            <sphereGeometry args={[radius * 1.07, 48, 48]} />
+            <meshBasicMaterial
+                ref={matRef}
+                color="#ffe0b6"
+                transparent
+                opacity={0.12}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+            />
+        </mesh>
+    );
+};
+
+/**
+ * ✅ 3D Hover tooltip: billboarded label + small backing plate
+ */
+const PlanetTooltip = ({ name, radius, color }: { name: string; radius: number; color?: string }) => {
+    const plateRef = useRef<THREE.Mesh>(null);
+
+    return (
+        <Billboard position={[0, radius * 1.75, 0]} follow={true} lockX={false} lockY={false} lockZ={false}>
+            {/* backing plate */}
+            <mesh ref={plateRef} renderOrder={10}>
+                <planeGeometry args={[2.6, 0.9]} />
+                <meshBasicMaterial transparent opacity={0.32} color="#000000" depthWrite={false} />
+            </mesh>
+
+            {/* text */}
+            <Text
+                position={[0, 0, 0.01]}
+                fontSize={0.35}
+                color={color ?? 'white'}
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.012}
+                outlineColor="#000000"
+            >
+                {name}
+            </Text>
+        </Billboard>
+    );
+};
+
 const EarthMoon = ({ earthRadius }: { earthRadius: number }) => {
     const moonRef = useRef<THREE.Mesh>(null);
     const pivotRef = useRef<THREE.Group>(null);
 
-    // nice relative scale
     const moonRadius = Math.max(0.14, earthRadius * 0.27);
     const moonDistance = earthRadius * 3.4;
 
     useFrame(({ clock }) => {
         const t = clock.getElapsedTime();
-        if (pivotRef.current) pivotRef.current.rotation.y = t * 0.55; // moon orbit
-        if (moonRef.current) moonRef.current.rotation.y += 0.01; // moon spin
+        if (pivotRef.current) pivotRef.current.rotation.y = t * 0.55;
+        if (moonRef.current) moonRef.current.rotation.y += 0.01;
     });
 
     return (
         <group ref={pivotRef}>
             <mesh ref={moonRef} position={[moonDistance, 0, 0]} castShadow receiveShadow>
                 <sphereGeometry args={[moonRadius, 32, 32]} />
-                <meshStandardMaterial
-                    color="#d9d6cf"
-                    roughness={1}
-                    metalness={0}
-                    emissive="#000000"
-                />
+                <meshStandardMaterial color="#d9d6cf" roughness={1} metalness={0} emissive="#000000" />
             </mesh>
         </group>
     );
