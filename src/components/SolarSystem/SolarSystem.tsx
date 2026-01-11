@@ -20,7 +20,7 @@ import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-
+import { useSearchParams } from 'next/navigation';
 const MAX_CAMERA_DISTANCE = 51000;
 
 /**
@@ -60,6 +60,7 @@ type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
 
 const SolarSystem = () => {
+    const searchParams = useSearchParams();
     const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
     const [focusedTarget, setFocusedTarget] = useState<FocusTarget>({ type: 'sun' });
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
@@ -83,6 +84,15 @@ const SolarSystem = () => {
     }, []);
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
+    
+    useEffect(() => {
+        const focus = searchParams.get('focus');
+        if (!focus) return;
+
+        // focus planet
+        setSelectedPlanet(focus);
+        setFocusedTarget({ type: 'planet', name: focus });
+    }, [searchParams]);
 
     const outermostOrbit = useMemo(() => {
         let max = 0;

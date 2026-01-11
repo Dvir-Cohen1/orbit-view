@@ -11,7 +11,7 @@ const SectionComponent = ({ children, id, className = '', ...rest }: TSectionCom
         <section
             {...rest}
             id={id}
-            className={`m-auto space-y-4 px-5 md:w-4/6 md:space-y-16 md:px-0 ${className}`}
+            className={`m-auto space-y-4 px-5  md:space-y-16 md:px-0 ${className}`}
         >
             {children}
         </section>
