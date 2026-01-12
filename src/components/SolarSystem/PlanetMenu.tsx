@@ -9,11 +9,9 @@ import {
   FaChevronUp,
   FaArrowRotateLeft,
 } from 'react-icons/fa6';
+import { useSfx } from '@/hooks/useSfx';
 
-type FocusTarget =
-  | { type: 'sun' }
-  | { type: 'planet'; name: string }
-  | null;
+type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 
 type PlanetMenuProps = {
   isPlanetMenuOpen: boolean;
@@ -26,6 +24,8 @@ type PlanetMenuProps = {
   setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
 
   toggleCameraRotation: () => void;
+
+  audioEnabled: boolean;
 };
 
 const PlanetMenu = ({
@@ -37,9 +37,19 @@ const PlanetMenu = ({
   setFocusedTarget,
   toggleCameraRotation,
   isCameraRotationEnabled,
+  audioEnabled,
 }: PlanetMenuProps) => {
   const router = useRouter();
   const planets = useMemo(() => PLANETS, []);
+
+  const { play } = useSfx(
+    {
+      click: '/sfx/ui-click.mp3',
+      toggle: '/sfx/ui-toggle.mp3',
+      focus: '/sfx/ui-focus.mp3',
+    },
+    { volume: 0.22, enabled: audioEnabled },
+  );
 
   const handleToggleMenu = () => setIsPlanetMenuOpen((prev) => !prev);
 
@@ -54,7 +64,6 @@ const PlanetMenu = ({
   };
 
   const selectedPlanetDetails = planets.find((p) => p.name === selectedPlanet);
-
   const isFollowingSun = focusedTarget?.type === 'sun';
 
   return (
@@ -83,8 +92,7 @@ const PlanetMenu = ({
               <strong>Radius:</strong> {selectedPlanetDetails.realRadius}km
             </li>
             <li>
-              <strong>Avg Distance From Sun:</strong>{' '}
-              {selectedPlanetDetails.avgDistanceFromSun}M KM
+              <strong>Avg Distance From Sun:</strong> {selectedPlanetDetails.avgDistanceFromSun}M KM
             </li>
             <li>
               <strong>Angle:</strong> {selectedPlanetDetails.angle} Degrees
@@ -99,23 +107,26 @@ const PlanetMenu = ({
         </div>
       )}
 
-      <div
-        id="main-panel"
-        className="absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5 "
-      >
-        <div className='bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm rounded'>
+      <div id="main-panel" className="absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5">
+        <div className="rounded bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm">
           <button
             aria-label="Back home"
-            className="rounded-bl rounded-tl  p-3 hover:bg-gray-900/50 focus:outline-none"
-            onClick={() => router.push('/')}
+            className="rounded-bl rounded-tl p-3 hover:bg-gray-900/50 focus:outline-none"
+            onClick={() => {
+              play('click');
+              router.push('/');
+            }}
           >
             <FaArrowRotateLeft />
           </button>
 
           <button
             aria-label={`${isCameraRotationEnabled ? 'Pause' : 'Resume'} rotation`}
-            className=" p-3 hover:bg-gray-900/50 focus:outline-none"
-            onClick={toggleCameraRotation}
+            className="p-3 hover:bg-gray-900/50 focus:outline-none"
+            onClick={() => {
+              play('toggle');
+              toggleCameraRotation();
+            }}
           >
             {isCameraRotationEnabled ? <FaCirclePause /> : <FaCirclePlay />}
           </button>
@@ -123,16 +134,18 @@ const PlanetMenu = ({
           <button
             aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
             aria-expanded={isPlanetMenuOpen}
-            className="rounded-br rounded-tr  p-3 hover:bg-gray-900/50 focus:outline-none"
-            onClick={handleToggleMenu}
+            className="rounded-br rounded-tr p-3 hover:bg-gray-900/50 focus:outline-none"
+            onClick={() => {
+              play('toggle');
+              handleToggleMenu();
+            }}
           >
             {isPlanetMenuOpen ? <FaChevronDown /> : <FaChevronUp />}
           </button>
         </div>
 
         {isPlanetMenuOpen && (
-          <div role="menu" className="flex flex-wrap bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm rounded">
-            {/* ✅ Sun focus item */}
+          <div role="menu" className="flex flex-wrap rounded bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm">
             <div
               role="menuitem"
               aria-label="Focus Sun"
@@ -140,17 +153,17 @@ const PlanetMenu = ({
                 'flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 p-4',
                 isFollowingSun ? 'bg-gray-900/70' : 'hover:bg-gray-800/40',
               ].join(' ')}
-              onClick={focusSun}
+              onClick={() => {
+                play('focus');
+                focusSun();
+              }}
             >
               <div className="h-[25px] w-[25px] rounded-full bg-yellow-200/90" />
               <p className="text-xs">Sun</p>
             </div>
 
             {planets.map((planet, index) => {
-              const isFocused =
-                focusedTarget?.type === 'planet' && focusedTarget.name === planet.name;
-
-              // +1 because Sun is added as first item
+              const isFocused = focusedTarget?.type === 'planet' && focusedTarget.name === planet.name;
               const realIndex = index + 1;
               const totalItems = planets.length + 1;
 
@@ -165,15 +178,12 @@ const PlanetMenu = ({
                     realIndex === totalItems - 1 ? 'rounded-br rounded-tr' : '',
                     isFocused ? 'bg-gray-900/70' : 'hover:bg-gray-800/40',
                   ].join(' ')}
-                  onClick={() => handlePlanetSelect(planet.name)}
+                  onClick={() => {
+                    play('focus');
+                    handlePlanetSelect(planet.name);
+                  }}
                 >
-                  <img
-                    width={25}
-                    height={25}
-                    src={planet.icon}
-                    alt={`${planet.name} icon`}
-                    className="rounded-full"
-                  />
+                  <img width={25} height={25} src={planet.icon} alt={`${planet.name} icon`} className="rounded-full" />
                   <p className="text-xs">{planet.name}</p>
                 </div>
               );

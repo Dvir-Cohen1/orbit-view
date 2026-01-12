@@ -21,6 +21,19 @@ type SceneSettingsMenuProps = {
 
      habitableZoneEnabled: boolean;
      setHabitableZoneEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
+     // ✅ NEW
+     timeScale: number;
+     setTimeScale: React.Dispatch<React.SetStateAction<number>>;
+
+     audioEnabled: boolean;
+     setAudioEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
+     asteroidBeltEnabled: boolean;
+     setAsteroidBeltEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
+     atmospheresEnabled: boolean;
+     setAtmospheresEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type Settings = {
@@ -28,11 +41,15 @@ type Settings = {
      orbitRingsEnabled: boolean;
      orbitLinesEnabled: boolean;
      planetLabelsEnabled: boolean;
-
      habitableZoneEnabled: boolean;
+
+     timeWarp?: 'slow' | 'normal' | 'fast';
+     audioEnabled?: boolean;
+     asteroidBeltEnabled?: boolean;
+     atmospheresEnabled?: boolean;
 };
 
-const LS_KEY = 'ov_scene_settings_v2';
+const LS_KEY = 'ov_scene_settings_v3';
 
 function safeReadSettings(): Partial<Settings> | null {
      try {
@@ -49,7 +66,7 @@ function safeWriteSettings(settings: Settings) {
      try {
           window.localStorage.setItem(LS_KEY, JSON.stringify(settings));
      } catch {
-          // ignore storage failures
+          // ignore
      }
 }
 
@@ -100,6 +117,15 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           setPlanetLabelsEnabled,
           habitableZoneEnabled,
           setHabitableZoneEnabled,
+
+          timeScale,
+          setTimeScale,
+          audioEnabled,
+          setAudioEnabled,
+          asteroidBeltEnabled,
+          setAsteroidBeltEnabled,
+          atmospheresEnabled,
+          setAtmospheresEnabled,
      } = props;
 
      const baseId = useId();
@@ -110,6 +136,9 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                lines: `${baseId}-lines`,
                labels: `${baseId}-labels`,
                hab: `${baseId}-hab`,
+               audio: `${baseId}-audio`,
+               belt: `${baseId}-belt`,
+               atm: `${baseId}-atm`,
           }),
           [baseId],
      );
@@ -117,7 +146,6 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
      const toggleOpen = useCallback(() => setIsOpen((v) => !v), [setIsOpen]);
      const close = useCallback(() => setIsOpen(false), [setIsOpen]);
 
-     // Load persisted settings once
      useEffect(() => {
           const saved = safeReadSettings();
           if (!saved) return;
@@ -128,21 +156,43 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           if (typeof saved.planetLabelsEnabled === 'boolean') setPlanetLabelsEnabled(saved.planetLabelsEnabled);
           if (typeof saved.habitableZoneEnabled === 'boolean') setHabitableZoneEnabled(saved.habitableZoneEnabled);
 
+          if (saved.timeWarp === 'slow') setTimeScale(0.09);
+          if (saved.timeWarp === 'normal') setTimeScale(0.18);
+          if (saved.timeWarp === 'fast') setTimeScale(0.42);
+
+          if (typeof saved.audioEnabled === 'boolean') setAudioEnabled(saved.audioEnabled);
+          if (typeof saved.asteroidBeltEnabled === 'boolean') setAsteroidBeltEnabled(saved.asteroidBeltEnabled);
+          if (typeof saved.atmospheresEnabled === 'boolean') setAtmospheresEnabled(saved.atmospheresEnabled);
+
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, []);
 
-     // Persist whenever any setting changes
      useEffect(() => {
+          const timeWarp = timeScale <= 0.1 ? 'slow' : timeScale >= 0.3 ? 'fast' : 'normal';
+
           safeWriteSettings({
                bloomEnabled,
                orbitRingsEnabled,
                orbitLinesEnabled,
                planetLabelsEnabled,
                habitableZoneEnabled,
+               timeWarp,
+               audioEnabled,
+               asteroidBeltEnabled,
+               atmospheresEnabled,
           });
-     }, [bloomEnabled, orbitRingsEnabled, orbitLinesEnabled, planetLabelsEnabled, habitableZoneEnabled]);
+     }, [
+          bloomEnabled,
+          orbitRingsEnabled,
+          orbitLinesEnabled,
+          planetLabelsEnabled,
+          habitableZoneEnabled,
+          timeScale,
+          audioEnabled,
+          asteroidBeltEnabled,
+          atmospheresEnabled,
+     ]);
 
-     // ESC closes panel
      useEffect(() => {
           if (!isOpen) return;
 
@@ -156,7 +206,6 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
 
      return (
           <aside className="pointer-events-none absolute right-4 top-4 z-50">
-               {/* Floating button */}
                <button
                     type="button"
                     aria-label={isOpen ? 'Close scene settings' : 'Open scene settings'}
@@ -168,7 +217,6 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                     <span className="hidden sm:inline">Scene</span>
                </button>
 
-               {/* Panel */}
                {isOpen ? (
                     <div className="pointer-events-auto mt-3 w-[280px] rounded-xl bg-gray-900/35 p-4 text-white shadow-xl backdrop-blur-md">
                          <div className="mb-3 flex items-center justify-between">
@@ -185,6 +233,42 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                               >
                                    Close
                               </button>
+                         </div>
+
+                         <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-2">
+                              <div className="mb-2 text-xs text-white/65">Time warp</div>
+                              <div className="grid grid-cols-3 gap-2">
+                                   <button
+                                        type="button"
+                                        onClick={() => setTimeScale(0.09)}
+                                        className={[
+                                             'rounded-md px-2 py-1 text-xs',
+                                             timeScale <= 0.1 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10',
+                                        ].join(' ')}
+                                   >
+                                        Slow
+                                   </button>
+                                   <button
+                                        type="button"
+                                        onClick={() => setTimeScale(0.18)}
+                                        className={[
+                                             'rounded-md px-2 py-1 text-xs',
+                                             timeScale > 0.1 && timeScale < 0.3 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10',
+                                        ].join(' ')}
+                                   >
+                                        Normal
+                                   </button>
+                                   <button
+                                        type="button"
+                                        onClick={() => setTimeScale(0.42)}
+                                        className={[
+                                             'rounded-md px-2 py-1 text-xs',
+                                             timeScale >= 0.3 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10',
+                                        ].join(' ')}
+                                   >
+                                        Fast
+                                   </button>
+                              </div>
                          </div>
 
                          <div className="divide-y divide-white/10">
@@ -226,6 +310,30 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                                    description="Subtle hot/green/cold bands"
                                    checked={habitableZoneEnabled}
                                    onChange={setHabitableZoneEnabled}
+                              />
+
+                              <ToggleRow
+                                   id={ids.audio}
+                                   label="Audio"
+                                   description="UI sounds + subtle space ambience"
+                                   checked={audioEnabled}
+                                   onChange={setAudioEnabled}
+                              />
+
+                              <ToggleRow
+                                   id={ids.belt}
+                                   label="Asteroid belt"
+                                   description="Adds the main belt between Mars & Jupiter"
+                                   checked={asteroidBeltEnabled}
+                                   onChange={setAsteroidBeltEnabled}
+                              />
+
+                              <ToggleRow
+                                   id={ids.atm}
+                                   label="Atmospheres"
+                                   description="Subtle limb glow shells (Earth/Venus/Mars)"
+                                   checked={atmospheresEnabled}
+                                   onChange={setAtmospheresEnabled}
                               />
                          </div>
                     </div>
