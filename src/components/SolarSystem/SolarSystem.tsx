@@ -22,6 +22,8 @@ import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postp
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useSearchParams } from 'next/navigation';
 const MAX_CAMERA_DISTANCE = 51000;
+import { ToneMappingMode } from 'postprocessing';
+import { Line } from '@react-three/drei';
 
 /**
  * ---------- Immersive realism knobs ----------
@@ -109,7 +111,8 @@ const SolarSystem = () => {
                 camera={{ position: [0, 10, 200], near: 0.1, far: 40000 }}
                 gl={{ logarithmicDepthBuffer: true }}
                 onCreated={({ gl }) => {
-                    gl.toneMappingExposure = 0.8;
+                    gl.toneMapping = THREE.NoToneMapping;
+                    gl.toneMappingExposure = 1; // exposure is handled by ToneMapping effect now
                 }}
                 style={{ height: '100vh' }}
                 shadows
@@ -120,7 +123,15 @@ const SolarSystem = () => {
 
                 <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={1.4} />
-                    <ToneMapping />
+
+                    <ToneMapping
+                        adaptive={false}                 // ✅ stops exposure pumping :contentReference[oaicite:1]{index=1}
+                        mode={ToneMappingMode.ACES_FILMIC} // (or AGX if you prefer)
+                        averageLuminance={1}
+                        middleGrey={0.6}
+                        maxLuminance={16}
+                        minLuminance={0.01}
+                    />
                     <Vignette eskil={false} offset={0.12} darkness={0.45} />
                 </EffectComposer>
 
@@ -161,7 +172,7 @@ const SolarSystem = () => {
                     zoomSpeed={1.4}
                 />
 
-                <Environment preset="night" />
+                <Environment preset="night" background={false} />
             </Canvas>
 
             <PlanetMenu
@@ -180,13 +191,7 @@ const SolarSystem = () => {
     );
 };
 
-const PanoramaBackground = ({
-    texturePath,
-    driftSpeed = 0.0,
-}: {
-    texturePath: string;
-    driftSpeed?: number;
-}) => {
+const PanoramaBackground = ({ texturePath, driftSpeed = 0.0 }: { texturePath: string; driftSpeed?: number }) => {
     const texture = useTextureDrei(texturePath);
     const { scene } = useThree();
 
@@ -194,8 +199,8 @@ const PanoramaBackground = ({
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.center.set(0.5, 0.5);
-
         texture.needsUpdate = true;
+
         scene.background = texture;
         scene.backgroundIntensity = 0.38;
 
@@ -208,8 +213,10 @@ const PanoramaBackground = ({
     }, [scene, texture]);
 
     useFrame((_, delta) => {
-        if (driftSpeed <= 0) return;
-        texture.rotation += driftSpeed * delta;
+        // ✅ pin it (prevents any accidental reset)
+        scene.backgroundIntensity = 0.38;
+
+        if (driftSpeed > 0) texture.rotation += driftSpeed * delta;
     });
 
     return null;
@@ -389,6 +396,15 @@ const SolarSystemScene = ({
         if (haloMatRef.current) haloMatRef.current.opacity = 0.08 * breathe;
     });
 
+
+    const makeOrbitPoints = (r: number, segments = 256) => {
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+        }
+        return pts;
+    };
     return (
         <>
             <group
@@ -410,6 +426,8 @@ const SolarSystemScene = ({
                         ref={coronaMatRef}
                         color="#ffd27a"
                         transparent
+                        toneMapped={false}
+
                         opacity={0.14}
                         blending={THREE.AdditiveBlending}
                         depthWrite={false}
@@ -428,17 +446,50 @@ const SolarSystemScene = ({
                     />
                 </mesh>
             </group>
-
             {PLANETS.map((p) => {
                 const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
                 return (
-                    <mesh key={`${p.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[orbit - 0.2, orbit + 0.2, 128]} />
-                        <meshBasicMaterial color="#333" side={THREE.DoubleSide} transparent opacity={0.35} />
+                    <mesh
+                        key={`${p.name}-orbit`}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[0, 0.02, 0]}     // ✅ tiny lift
+                        renderOrder={-1}
+                    >
+                        <ringGeometry args={[orbit - 0.2, orbit + 0.2, 256]} />
+                        <meshBasicMaterial
+                            color="#b9c1cc"
+                            side={THREE.DoubleSide}
+                            transparent
+                            opacity={0.18}
+                            depthWrite={false}
+                            blending={THREE.AdditiveBlending}
+                            toneMapped={false}
+                        />
                     </mesh>
                 );
             })}
 
+
+            {PLANETS.map((p) => {
+                const r = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
+                const pts = makeOrbitPoints(r, 384);
+
+                return (
+                    <group key={`${p.name}-orbit`} position={[0, 0.02, 0]} rotation={[0, 0, 0]}>
+                        <Line
+                            points={pts}
+                            color="#b9c1cc"
+                            transparent
+                            opacity={0.25}
+                            lineWidth={1}        // px (works fine on most platforms)
+                            dashed
+                            dashSize={12}
+                            gapSize={10}
+                            toneMapped={false}
+                        />
+                    </group>
+                );
+            })}
             {PLANETS.map((p) => (
                 <Planet
                     key={p.name}
@@ -528,7 +579,7 @@ const Planet = ({
         } catch { }
     };
 
-    const scale = isFocused ? 1.35 : isSelected ? 1.25 : hovered ? 1.12 : 1;
+    const scale = isFocused ? 1.18 : isSelected ? 1.12 : hovered ? 1.06 : 1;
     const trailLength = 10;
     const trailWidth = Math.max(0.08, radius * 0.08);
 
@@ -560,8 +611,8 @@ const Planet = ({
                     <meshStandardMaterial
                         map={planetTexture || null}
                         color={color || 'white'}
-                        emissive={isFocused ? 'white' : color || 'white'}
-                        emissiveIntensity={isFocused ? 0.65 : 0.08}
+                        emissive="#000000"          // no emissive highlight
+                        emissiveIntensity={0}       // ✅ this stops bloom spill completely
                         roughness={1}
                         metalness={0}
                     />

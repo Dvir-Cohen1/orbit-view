@@ -62,7 +62,7 @@ const PlanetMenu = ({
       {selectedPlanet && selectedPlanetDetails && (
         <div
           aria-live="polite"
-          className="absolute left-5 top-5 max-w-96 space-y-2 rounded-lg bg-gray-900/30 bg-opacity-70 p-4 text-sm text-white shadow shadow-gray-900/50"
+          className="absolute left-5 top-5 max-w-80 space-y-2 rounded-lg bg-gray-900/30 bg-opacity-70 p-4 text-sm text-white shadow-lg backdrop-blur-sm"
         >
           <div>
             <h4 className="flex place-items-center gap-2">
