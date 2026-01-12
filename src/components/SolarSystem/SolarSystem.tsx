@@ -84,7 +84,7 @@ const SolarSystem = () => {
     }, []);
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
-    
+
     useEffect(() => {
         const focus = searchParams.get('focus');
         if (!focus) return;
@@ -523,6 +523,9 @@ const Planet = ({
     const handleClick = () => {
         setSelectedPlanet(name);
         setFocusedTarget({ type: 'planet', name });
+        try {
+            window.localStorage.setItem('ov_last_focus', name);
+        } catch { }
     };
 
     const scale = isFocused ? 1.35 : isSelected ? 1.25 : hovered ? 1.12 : 1;

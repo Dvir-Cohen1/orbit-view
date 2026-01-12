@@ -1,4 +1,3 @@
-// OrbitHeroBackdrop.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -140,7 +139,7 @@ export default function OrbitHeroBackdrop({ className }: Props) {
 
                {/* orbit rings */}
                <div
-                    className="absolute left-1/2 top-1/2 h-[760px] w-[760px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10"
+                    className="absolute left-1/2 top-1/2 h-[840px] w-[840px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10"
                     style={{ transform: `translate3d(calc(-50% + (${PX} * 10px)), calc(-50% + (${PY} * 8px)), 0)` }}
                />
                <div
