@@ -1,4 +1,3 @@
-// SceneSettingsMenu.tsx
 'use client';
 
 import React, { useCallback, useEffect, useId, useMemo } from 'react';
@@ -17,21 +16,23 @@ type SceneSettingsMenuProps = {
      orbitLinesEnabled: boolean;
      setOrbitLinesEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 
-     // ✅ NEW
      planetLabelsEnabled: boolean;
      setPlanetLabelsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
+     habitableZoneEnabled: boolean;
+     setHabitableZoneEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type Settings = {
      bloomEnabled: boolean;
      orbitRingsEnabled: boolean;
      orbitLinesEnabled: boolean;
-
-     // ✅ NEW
      planetLabelsEnabled: boolean;
+
+     habitableZoneEnabled: boolean;
 };
 
-const LS_KEY = 'ov_scene_settings_v1';
+const LS_KEY = 'ov_scene_settings_v2';
 
 function safeReadSettings(): Partial<Settings> | null {
      try {
@@ -47,7 +48,9 @@ function safeReadSettings(): Partial<Settings> | null {
 function safeWriteSettings(settings: Settings) {
      try {
           window.localStorage.setItem(LS_KEY, JSON.stringify(settings));
-     } catch { }
+     } catch {
+          // ignore storage failures
+     }
 }
 
 const ToggleRow = React.memo(function ToggleRow({
@@ -93,10 +96,10 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           setOrbitRingsEnabled,
           orbitLinesEnabled,
           setOrbitLinesEnabled,
-
-          // ✅ NEW
           planetLabelsEnabled,
           setPlanetLabelsEnabled,
+          habitableZoneEnabled,
+          setHabitableZoneEnabled,
      } = props;
 
      const baseId = useId();
@@ -105,7 +108,8 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                bloom: `${baseId}-bloom`,
                rings: `${baseId}-rings`,
                lines: `${baseId}-lines`,
-               labels: `${baseId}-labels`, // ✅ NEW
+               labels: `${baseId}-labels`,
+               hab: `${baseId}-hab`,
           }),
           [baseId],
      );
@@ -113,6 +117,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
      const toggleOpen = useCallback(() => setIsOpen((v) => !v), [setIsOpen]);
      const close = useCallback(() => setIsOpen(false), [setIsOpen]);
 
+     // Load persisted settings once
      useEffect(() => {
           const saved = safeReadSettings();
           if (!saved) return;
@@ -120,21 +125,24 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           if (typeof saved.bloomEnabled === 'boolean') setBloomEnabled(saved.bloomEnabled);
           if (typeof saved.orbitRingsEnabled === 'boolean') setOrbitRingsEnabled(saved.orbitRingsEnabled);
           if (typeof saved.orbitLinesEnabled === 'boolean') setOrbitLinesEnabled(saved.orbitLinesEnabled);
-
-          // ✅ NEW
           if (typeof saved.planetLabelsEnabled === 'boolean') setPlanetLabelsEnabled(saved.planetLabelsEnabled);
+          if (typeof saved.habitableZoneEnabled === 'boolean') setHabitableZoneEnabled(saved.habitableZoneEnabled);
+
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, []);
 
+     // Persist whenever any setting changes
      useEffect(() => {
           safeWriteSettings({
                bloomEnabled,
                orbitRingsEnabled,
                orbitLinesEnabled,
-               planetLabelsEnabled, // ✅ NEW
+               planetLabelsEnabled,
+               habitableZoneEnabled,
           });
-     }, [bloomEnabled, orbitRingsEnabled, orbitLinesEnabled, planetLabelsEnabled]);
+     }, [bloomEnabled, orbitRingsEnabled, orbitLinesEnabled, planetLabelsEnabled, habitableZoneEnabled]);
 
+     // ESC closes panel
      useEffect(() => {
           if (!isOpen) return;
 
@@ -148,6 +156,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
 
      return (
           <aside className="pointer-events-none absolute right-4 top-4 z-50">
+               {/* Floating button */}
                <button
                     type="button"
                     aria-label={isOpen ? 'Close scene settings' : 'Open scene settings'}
@@ -159,6 +168,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                     <span className="hidden sm:inline">Scene</span>
                </button>
 
+               {/* Panel */}
                {isOpen ? (
                     <div className="pointer-events-auto mt-3 w-[280px] rounded-xl bg-gray-900/35 p-4 text-white shadow-xl backdrop-blur-md">
                          <div className="mb-3 flex items-center justify-between">
@@ -208,6 +218,14 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                                    description="Show planet name tags"
                                    checked={planetLabelsEnabled}
                                    onChange={setPlanetLabelsEnabled}
+                              />
+
+                              <ToggleRow
+                                   id={ids.hab}
+                                   label="Habitable zone"
+                                   description="Subtle hot/green/cold bands"
+                                   checked={habitableZoneEnabled}
+                                   onChange={setHabitableZoneEnabled}
                               />
                          </div>
                     </div>

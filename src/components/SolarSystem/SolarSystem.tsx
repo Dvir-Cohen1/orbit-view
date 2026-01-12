@@ -44,6 +44,17 @@ const PLANET_MIN_RADIUS = 0.35;
 const ORBIT_Y_LIFT = 0.02;
 const ORBIT_RING_HALF_WIDTH = 0.12;
 
+const AU_MILLION_KM = 149.6;
+const HZ_AU = {
+    // Conservative HZ (Mars often inside)
+    habInner: 0.95,
+    habOuter: 1.5,
+
+    // For your visual red/blue "too hot/too cold" bands
+    hotInner: 0.35,
+    coldOuter: 5.50,
+} as const;
+
 /**
  * Map real-ish distances (million km) into explorable world units
  */
@@ -106,6 +117,98 @@ const OrbitLine = React.memo(function OrbitLine({
     );
 });
 
+// soft alpha texture for band edges (reused for all 3 rings)
+function createBandAlphaTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = 8;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        const fallback = new THREE.Texture();
+        fallback.needsUpdate = true;
+        return fallback;
+    }
+
+    // Transparent -> solid -> transparent across U
+    const g = ctx.createLinearGradient(0, 0, size, 0);
+    g.addColorStop(0.0, 'rgba(255,255,255,0.0)');
+    g.addColorStop(0.12, 'rgba(255,255,255,0.35)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+    g.addColorStop(0.88, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, canvas.height);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+/**
+ * ✅ Habitable Zone as orbit-aligned annular bands (distance from Sun)
+ * Hot: inner -> 0.95 AU
+ * Habitable: 0.95 -> 1.67 AU (Earth at ~1 AU)
+ * Cold: 1.67 -> 2.7 AU (extends beyond Mars)
+ */
+const HabitableZone = React.memo(function HabitableZone() {
+    const alphaTex = useMemo(() => createBandAlphaTexture(512), []);
+
+    // These radii are computed in "world units" using the same mapping as planets
+    const radii = useMemo(() => {
+        const hotInner = mapOrbitFromAvgDistance(HZ_AU.hotInner * AU_MILLION_KM);
+        const hotOuter = mapOrbitFromAvgDistance(HZ_AU.habInner * AU_MILLION_KM);
+
+        const habInner = hotOuter;
+        const habOuter = mapOrbitFromAvgDistance(HZ_AU.habOuter * AU_MILLION_KM);
+
+        const coldInner = habOuter;
+        const coldOuter = mapOrbitFromAvgDistance(HZ_AU.coldOuter * AU_MILLION_KM);
+
+        return { hotInner, hotOuter, habInner, habOuter, coldInner, coldOuter };
+    }, []);
+
+    const commonMat = {
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        alphaMap: alphaTex,
+        opacity: 0.05, // subtle
+    };
+
+    // slight lift above orbit rings/lines to avoid z-fighting
+    const y = ORBIT_Y_LIFT + 0.012;
+
+    return (
+        <group rotation={[-Math.PI / 2, 0, 0]} position={[0, y, 0]} renderOrder={-2}>
+            {/* Too hot (red) */}
+            <mesh>
+                <ringGeometry args={[radii.hotInner, radii.hotOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#ff3b3b" />
+            </mesh>
+
+            {/* Habitable (green) */}
+            <mesh>
+                <ringGeometry args={[radii.habInner, radii.habOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#39ff88" opacity={0.11} />
+            </mesh>
+
+            {/* Too cold (blue) */}
+            <mesh>
+                <ringGeometry args={[radii.coldInner, radii.coldOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#3bb3ff" />
+            </mesh>
+        </group>
+    );
+});
+
+
 const SolarSystem = () => {
     const searchParams = useSearchParams();
 
@@ -114,14 +217,17 @@ const SolarSystem = () => {
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
 
-    // ✅ scene settings
+    // scene settings
     const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
     const [bloomEnabled, setBloomEnabled] = useState(true);
     const [orbitRingsEnabled, setOrbitRingsEnabled] = useState(true);
     const [orbitLinesEnabled, setOrbitLinesEnabled] = useState(true);
 
-    // ✅ NEW: labels toggle
+    // labels toggle
     const [planetLabelsEnabled, setPlanetLabelsEnabled] = useState(true);
+
+    // habitable zone toggle
+    const [habitableZoneEnabled, setHabitableZoneEnabled] = useState(true);
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
     const planetPositionsRef = useRef<PlanetPositionStore>({});
@@ -204,6 +310,7 @@ const SolarSystem = () => {
                     orbitRingsEnabled={orbitRingsEnabled}
                     orbitLinesEnabled={orbitLinesEnabled}
                     planetLabelsEnabled={planetLabelsEnabled}
+                    habitableZoneEnabled={habitableZoneEnabled}
                 />
 
                 <CameraController
@@ -242,6 +349,8 @@ const SolarSystem = () => {
                 setOrbitLinesEnabled={setOrbitLinesEnabled}
                 planetLabelsEnabled={planetLabelsEnabled}
                 setPlanetLabelsEnabled={setPlanetLabelsEnabled}
+                habitableZoneEnabled={habitableZoneEnabled}
+                setHabitableZoneEnabled={setHabitableZoneEnabled}
             />
 
             <PlanetMenu
@@ -447,6 +556,7 @@ const SolarSystemScene = ({
     orbitRingsEnabled,
     orbitLinesEnabled,
     planetLabelsEnabled,
+    habitableZoneEnabled,
 }: {
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
@@ -457,6 +567,7 @@ const SolarSystemScene = ({
     orbitRingsEnabled: boolean;
     orbitLinesEnabled: boolean;
     planetLabelsEnabled: boolean;
+    habitableZoneEnabled: boolean;
 }) => {
     const sunRef = useRef<THREE.Group>(null);
     const sunMatRef = useRef<THREE.MeshStandardMaterial>(null);
@@ -482,6 +593,12 @@ const SolarSystemScene = ({
         }));
     }, []);
 
+
+    const earthOrbit = useMemo(() => {
+        const earth = PLANETS.find((p) => p.name === 'Earth');
+        if (!earth) return mapOrbitFromAvgDistance(undefined, 150);
+        return mapOrbitFromAvgDistance((earth as any).avgDistanceFromSun, earth.distance);
+    }, []);
     return (
         <>
             <group
@@ -517,11 +634,13 @@ const SolarSystemScene = ({
                         color="#fff2c6"
                         transparent
                         opacity={0.08}
-                        blending={THREE.AdditiveBlending}
+                        blending={THREE.NormalBlending}
                         depthWrite={false}
                     />
                 </mesh>
             </group>
+
+            {habitableZoneEnabled && <HabitableZone />}
 
             {/* Orbit rings */}
             {orbitRingsEnabled &&
