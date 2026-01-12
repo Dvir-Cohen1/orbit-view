@@ -1,29 +1,31 @@
 // SolarSystem.tsx
 'use client';
 
-import React, { useState, useRef, useMemo, useCallback, useEffect, Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
+    Billboard,
+    Environment,
+    Line,
+    Loader,
     OrbitControls,
     Stars,
-    Environment,
-    Loader,
+    Text,
+    Trail,
     useCursor,
     useTexture as useTextureDrei,
-    Trail,
-    Billboard,
-    Text,
 } from '@react-three/drei';
 import * as THREE from 'three';
-import PlanetMenu from './PlanetMenu';
-import { PLANETS } from '@/constants/solarSystem.constants';
-import { PlanetProps } from '../../../globals';
 import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useSearchParams } from 'next/navigation';
-const MAX_CAMERA_DISTANCE = 51000;
 import { ToneMappingMode } from 'postprocessing';
-import { Line } from '@react-three/drei';
+
+import PlanetMenu from './PlanetMenu';
+import { PLANETS } from '@/constants/solarSystem.constants';
+import { PlanetProps } from '../../../globals';
+
+const MAX_CAMERA_DISTANCE = 51000;
 
 /**
  * ---------- Immersive realism knobs ----------
@@ -37,6 +39,9 @@ const SUN_REAL_RADIUS_KM = 696_340;
 
 const RADIUS_POWER = 0.42;
 const PLANET_MIN_RADIUS = 0.35;
+
+const ORBIT_Y_LIFT = 0.02;
+const ORBIT_RING_HALF_WIDTH = 0.12; // thinner, cleaner ring band
 
 /**
  * Map real-ish distances (million km) into explorable world units
@@ -55,11 +60,50 @@ const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
     return Math.max(PLANET_MIN_RADIUS, SUN_VISUAL_RADIUS * Math.pow(ratio, RADIUS_POWER));
 };
 
+// (kept from your code) – ok for local static textures.
+// If you want even better caching later, switch to useTextureDrei for planet textures too.
 const useTexture = (path?: string) =>
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
 
 type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
+
+/**
+ * ✅ Memoized dashed orbit line – points are computed once per radius
+ */
+const OrbitLine = React.memo(function OrbitLine({
+    radius,
+    opacity = 0.25,
+}: {
+    radius: number;
+    opacity?: number;
+}) {
+    const points = useMemo(() => {
+        const segments = 384;
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+        }
+        return pts;
+    }, [radius]);
+
+    return (
+        <group position={[0, ORBIT_Y_LIFT, 0]}>
+            <Line
+                points={points}
+                color="#b9c1cc"
+                transparent
+                opacity={opacity}
+                lineWidth={1}
+                dashed
+                dashSize={12}
+                gapSize={10}
+                toneMapped={false}
+            />
+        </group>
+    );
+});
 
 const SolarSystem = () => {
     const searchParams = useSearchParams();
@@ -90,8 +134,6 @@ const SolarSystem = () => {
     useEffect(() => {
         const focus = searchParams.get('focus');
         if (!focus) return;
-
-        // focus planet
         setSelectedPlanet(focus);
         setFocusedTarget({ type: 'planet', name: focus });
     }, [searchParams]);
@@ -111,8 +153,9 @@ const SolarSystem = () => {
                 camera={{ position: [0, 10, 200], near: 0.1, far: 40000 }}
                 gl={{ logarithmicDepthBuffer: true }}
                 onCreated={({ gl }) => {
+                    // renderer tone mapping OFF, postprocessing ToneMapping ON
                     gl.toneMapping = THREE.NoToneMapping;
-                    gl.toneMappingExposure = 1; // exposure is handled by ToneMapping effect now
+                    gl.toneMappingExposure = 1;
                 }}
                 style={{ height: '100vh' }}
                 shadows
@@ -123,10 +166,9 @@ const SolarSystem = () => {
 
                 <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={1.4} />
-
                     <ToneMapping
-                        adaptive={false}                 // ✅ stops exposure pumping :contentReference[oaicite:1]{index=1}
-                        mode={ToneMappingMode.ACES_FILMIC} // (or AGX if you prefer)
+                        adaptive={false}
+                        mode={ToneMappingMode.ACES_FILMIC}
                         averageLuminance={1}
                         middleGrey={0.6}
                         maxLuminance={16}
@@ -191,7 +233,13 @@ const SolarSystem = () => {
     );
 };
 
-const PanoramaBackground = ({ texturePath, driftSpeed = 0.0 }: { texturePath: string; driftSpeed?: number }) => {
+const PanoramaBackground = ({
+    texturePath,
+    driftSpeed = 0.0,
+}: {
+    texturePath: string;
+    driftSpeed?: number;
+}) => {
     const texture = useTextureDrei(texturePath);
     const { scene } = useThree();
 
@@ -213,9 +261,7 @@ const PanoramaBackground = ({ texturePath, driftSpeed = 0.0 }: { texturePath: st
     }, [scene, texture]);
 
     useFrame((_, delta) => {
-        // ✅ pin it (prevents any accidental reset)
         scene.backgroundIntensity = 0.38;
-
         if (driftSpeed > 0) texture.rotation += driftSpeed * delta;
     });
 
@@ -396,15 +442,14 @@ const SolarSystemScene = ({
         if (haloMatRef.current) haloMatRef.current.opacity = 0.08 * breathe;
     });
 
+    // ✅ Memoize radii once; avoids repeated mapOrbit calls in 3 separate maps
+    const orbitRadii = useMemo(() => {
+        return PLANETS.map((p) => ({
+            name: p.name,
+            radius: mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance),
+        }));
+    }, []);
 
-    const makeOrbitPoints = (r: number, segments = 256) => {
-        const pts: THREE.Vector3[] = [];
-        for (let i = 0; i <= segments; i++) {
-            const a = (i / segments) * Math.PI * 2;
-            pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
-        }
-        return pts;
-    };
     return (
         <>
             <group
@@ -427,7 +472,6 @@ const SolarSystemScene = ({
                         color="#ffd27a"
                         transparent
                         toneMapped={false}
-
                         opacity={0.14}
                         blending={THREE.AdditiveBlending}
                         depthWrite={false}
@@ -446,50 +490,33 @@ const SolarSystemScene = ({
                     />
                 </mesh>
             </group>
-            {PLANETS.map((p) => {
-                const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
-                return (
-                    <mesh
-                        key={`${p.name}-orbit`}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        position={[0, 0.02, 0]}     // ✅ tiny lift
-                        renderOrder={-1}
-                    >
-                        <ringGeometry args={[orbit - 0.2, orbit + 0.2, 256]} />
-                        <meshBasicMaterial
-                            color="#b9c1cc"
-                            side={THREE.DoubleSide}
-                            transparent
-                            opacity={0.18}
-                            depthWrite={false}
-                            blending={THREE.AdditiveBlending}
-                            toneMapped={false}
-                        />
-                    </mesh>
-                );
-            })}
 
+            {/* ✅ Orbit rings (keys unique + thinner band) */}
+            {orbitRadii.map(({ name, radius }) => (
+                <mesh
+                    key={`${name}-orbitRing`}
+                    rotation={[-Math.PI / 2, 0, 0]}
+                    position={[0, ORBIT_Y_LIFT, 0]}
+                    renderOrder={-1}
+                >
+                    <ringGeometry args={[radius - ORBIT_RING_HALF_WIDTH, radius + ORBIT_RING_HALF_WIDTH, 256]} />
+                    <meshBasicMaterial
+                        color="#b9c1cc"
+                        side={THREE.DoubleSide}
+                        transparent
+                        opacity={0.18}
+                        depthWrite={false}
+                        blending={THREE.AdditiveBlending}
+                        toneMapped={false}
+                    />
+                </mesh>
+            ))}
 
-            {PLANETS.map((p) => {
-                const r = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
-                const pts = makeOrbitPoints(r, 384);
+            {/* ✅ Orbit dashed lines (memoized points per radius) */}
+            {orbitRadii.map(({ name, radius }) => (
+                <OrbitLine key={`${name}-orbitLine`} radius={radius} opacity={0.25} />
+            ))}
 
-                return (
-                    <group key={`${p.name}-orbit`} position={[0, 0.02, 0]} rotation={[0, 0, 0]}>
-                        <Line
-                            points={pts}
-                            color="#b9c1cc"
-                            transparent
-                            opacity={0.25}
-                            lineWidth={1}        // px (works fine on most platforms)
-                            dashed
-                            dashSize={12}
-                            gapSize={10}
-                            toneMapped={false}
-                        />
-                    </group>
-                );
-            })}
             {PLANETS.map((p) => (
                 <Planet
                     key={p.name}
@@ -597,7 +624,6 @@ const Planet = ({
             }}
             scale={scale}
         >
-            {/* Orbit trail + planet */}
             <Trail
                 width={trailWidth}
                 length={trailLength}
@@ -611,31 +637,22 @@ const Planet = ({
                     <meshStandardMaterial
                         map={planetTexture || null}
                         color={color || 'white'}
-                        emissive="#000000"          // no emissive highlight
-                        emissiveIntensity={0}       // ✅ this stops bloom spill completely
+                        emissive="#000000"
+                        emissiveIntensity={0}
                         roughness={1}
                         metalness={0}
                     />
                 </mesh>
             </Trail>
 
-            {/* ✅ Jupiter atmosphere glow */}
             {name === 'Jupiter' && <JupiterAtmosphere radius={radius} />}
-
-            {/* ✅ Saturn rings (real ring mesh) */}
             {hasRings && <SaturnRings planetRadius={radius} />}
-
-            {/* ✅ 3D hover tooltip */}
             {hovered && <PlanetTooltip name={name} radius={radius} color={color} />}
-            {/* Earth moon stays (your existing) */}
             {name === 'Earth' && <EarthMoon earthRadius={radius} />}
         </group>
     );
 };
 
-/**
- * ✅ Saturn rings: ringGeometry + procedural band texture + slight tilt
- */
 const SaturnRings = ({ planetRadius }: { planetRadius: number }) => {
     const tex = useMemo(() => createSaturnRingsTexture(1024), []);
     const inner = planetRadius * 1.35;
@@ -667,10 +684,7 @@ function createSaturnRingsTexture(size = 512) {
         return fallback;
     }
 
-    // horizontal band gradient (we'll sample it radially via UVs in ring)
     const g = ctx.createLinearGradient(0, 0, size, 0);
-
-    // dark -> bright -> dark bands
     g.addColorStop(0.0, 'rgba(130,110,85,0)');
     g.addColorStop(0.08, 'rgba(170,150,120,0.25)');
     g.addColorStop(0.18, 'rgba(210,190,160,0.55)');
@@ -683,7 +697,6 @@ function createSaturnRingsTexture(size = 512) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, canvas.height);
 
-    // add some subtle noise specks
     const img = ctx.getImageData(0, 0, size, canvas.height);
     const data = img.data;
     for (let i = 0; i < data.length; i += 4) {
@@ -702,9 +715,6 @@ function createSaturnRingsTexture(size = 512) {
     return tex;
 }
 
-/**
- * ✅ Jupiter atmosphere: additive halo that softly breathes
- */
 const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     const matRef = useRef<THREE.MeshBasicMaterial>(null);
 
@@ -729,21 +739,22 @@ const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     );
 };
 
-/**
- * ✅ 3D Hover tooltip: billboarded label + small backing plate
- */
-const PlanetTooltip = ({ name, radius, color }: { name: string; radius: number; color?: string }) => {
-    const plateRef = useRef<THREE.Mesh>(null);
-
+const PlanetTooltip = ({
+    name,
+    radius,
+    color,
+}: {
+    name: string;
+    radius: number;
+    color?: string;
+}) => {
     return (
-        <Billboard position={[0, radius * 1.75, 0]} follow={true} lockX={false} lockY={false} lockZ={false}>
-            {/* backing plate */}
-            <mesh ref={plateRef} renderOrder={10}>
+        <Billboard position={[0, radius * 1.75, 0]} follow lockX={false} lockY={false} lockZ={false}>
+            <mesh renderOrder={10}>
                 <planeGeometry args={[2.6, 0.9]} />
                 <meshBasicMaterial transparent opacity={0.32} color="#000000" depthWrite={false} />
             </mesh>
 
-            {/* text */}
             <Text
                 position={[0, 0, 0.01]}
                 fontSize={0.35}
