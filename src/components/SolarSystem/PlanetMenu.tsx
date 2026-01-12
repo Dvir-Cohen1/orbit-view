@@ -101,12 +101,12 @@ const PlanetMenu = ({
 
       <div
         id="main-panel"
-        className="absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5"
+        className="absolute bottom-5 left-1/2 mb-4 flex -translate-x-1/2 transform flex-col items-center gap-5 "
       >
-        <div>
+        <div className='bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm rounded'>
           <button
             aria-label="Back home"
-            className="rounded-bl rounded-tl bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none"
+            className="rounded-bl rounded-tl  p-3 hover:bg-gray-900/50 focus:outline-none"
             onClick={() => router.push('/')}
           >
             <FaArrowRotateLeft />
@@ -114,7 +114,7 @@ const PlanetMenu = ({
 
           <button
             aria-label={`${isCameraRotationEnabled ? 'Pause' : 'Resume'} rotation`}
-            className="bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none"
+            className=" p-3 hover:bg-gray-900/50 focus:outline-none"
             onClick={toggleCameraRotation}
           >
             {isCameraRotationEnabled ? <FaCirclePause /> : <FaCirclePlay />}
@@ -123,7 +123,7 @@ const PlanetMenu = ({
           <button
             aria-label={`${isPlanetMenuOpen ? 'Close' : 'Open'} planet menu`}
             aria-expanded={isPlanetMenuOpen}
-            className="rounded-br rounded-tr bg-gray-900/35 p-3 hover:bg-gray-900/50 focus:outline-none"
+            className="rounded-br rounded-tr  p-3 hover:bg-gray-900/50 focus:outline-none"
             onClick={handleToggleMenu}
           >
             {isPlanetMenuOpen ? <FaChevronDown /> : <FaChevronUp />}
@@ -131,13 +131,13 @@ const PlanetMenu = ({
         </div>
 
         {isPlanetMenuOpen && (
-          <div role="menu" className="flex flex-wrap">
+          <div role="menu" className="flex flex-wrap bg-gray-900/30 bg-opacity-70 shadow-lg backdrop-blur-sm rounded">
             {/* ✅ Sun focus item */}
             <div
               role="menuitem"
               aria-label="Focus Sun"
               className={[
-                'flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 bg-gray-900/30 p-4',
+                'flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 p-4',
                 isFollowingSun ? 'bg-gray-900/70' : 'hover:bg-gray-800/40',
               ].join(' ')}
               onClick={focusSun}
@@ -160,7 +160,7 @@ const PlanetMenu = ({
                   role="menuitem"
                   aria-label={`Select ${planet.name}`}
                   className={[
-                    'flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 bg-gray-900/30 p-4',
+                    'flex min-w-24 cursor-pointer flex-col items-center justify-center gap-4 p-4',
                     realIndex === 0 ? 'rounded-bl rounded-tl' : '',
                     realIndex === totalItems - 1 ? 'rounded-br rounded-tr' : '',
                     isFocused ? 'bg-gray-900/70' : 'hover:bg-gray-800/40',

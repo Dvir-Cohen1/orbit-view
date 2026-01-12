@@ -22,6 +22,7 @@ import { useSearchParams } from 'next/navigation';
 import { ToneMappingMode } from 'postprocessing';
 
 import PlanetMenu from './PlanetMenu';
+import SceneSettingsMenu from './SceneSettingsMenu';
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
 
@@ -41,7 +42,7 @@ const RADIUS_POWER = 0.42;
 const PLANET_MIN_RADIUS = 0.35;
 
 const ORBIT_Y_LIFT = 0.02;
-const ORBIT_RING_HALF_WIDTH = 0.12; // thinner, cleaner ring band
+const ORBIT_RING_HALF_WIDTH = 0.12;
 
 /**
  * Map real-ish distances (million km) into explorable world units
@@ -60,16 +61,16 @@ const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
     return Math.max(PLANET_MIN_RADIUS, SUN_VISUAL_RADIUS * Math.pow(ratio, RADIUS_POWER));
 };
 
-// (kept from your code) – ok for local static textures.
-// If you want even better caching later, switch to useTextureDrei for planet textures too.
+// kept from your code — fine for local static textures
 const useTexture = (path?: string) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
 
 type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
 
 /**
- * ✅ Memoized dashed orbit line – points are computed once per radius
+ * ✅ Memoized dashed orbit line – points computed once per radius
  */
 const OrbitLine = React.memo(function OrbitLine({
     radius,
@@ -107,10 +108,20 @@ const OrbitLine = React.memo(function OrbitLine({
 
 const SolarSystem = () => {
     const searchParams = useSearchParams();
+
     const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
     const [focusedTarget, setFocusedTarget] = useState<FocusTarget>({ type: 'sun' });
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
+
+    // ✅ scene settings
+    const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
+    const [bloomEnabled, setBloomEnabled] = useState(true);
+    const [orbitRingsEnabled, setOrbitRingsEnabled] = useState(true);
+    const [orbitLinesEnabled, setOrbitLinesEnabled] = useState(true);
+
+    // ✅ NEW: labels toggle
+    const [planetLabelsEnabled, setPlanetLabelsEnabled] = useState(true);
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
     const planetPositionsRef = useRef<PlanetPositionStore>({});
@@ -153,7 +164,6 @@ const SolarSystem = () => {
                 camera={{ position: [0, 10, 200], near: 0.1, far: 40000 }}
                 gl={{ logarithmicDepthBuffer: true }}
                 onCreated={({ gl }) => {
-                    // renderer tone mapping OFF, postprocessing ToneMapping ON
                     gl.toneMapping = THREE.NoToneMapping;
                     gl.toneMappingExposure = 1;
                 }}
@@ -165,7 +175,7 @@ const SolarSystem = () => {
                 </Suspense>
 
                 <EffectComposer>
-                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.4} />
+                    <Bloom mipmapBlur luminanceThreshold={1} intensity={bloomEnabled ? 1.4 : 0} />
                     <ToneMapping
                         adaptive={false}
                         mode={ToneMappingMode.ACES_FILMIC}
@@ -191,6 +201,9 @@ const SolarSystem = () => {
                     selectedPlanet={selectedPlanet}
                     focusedTarget={focusedTarget}
                     onPlanetPosition={updatePlanetPosition}
+                    orbitRingsEnabled={orbitRingsEnabled}
+                    orbitLinesEnabled={orbitLinesEnabled}
+                    planetLabelsEnabled={planetLabelsEnabled}
                 />
 
                 <CameraController
@@ -216,6 +229,20 @@ const SolarSystem = () => {
 
                 <Environment preset="night" background={false} />
             </Canvas>
+
+            {/* ✅ Right Scene Settings Menu */}
+            <SceneSettingsMenu
+                isOpen={isSceneMenuOpen}
+                setIsOpen={setIsSceneMenuOpen}
+                bloomEnabled={bloomEnabled}
+                setBloomEnabled={setBloomEnabled}
+                orbitRingsEnabled={orbitRingsEnabled}
+                setOrbitRingsEnabled={setOrbitRingsEnabled}
+                orbitLinesEnabled={orbitLinesEnabled}
+                setOrbitLinesEnabled={setOrbitLinesEnabled}
+                planetLabelsEnabled={planetLabelsEnabled}
+                setPlanetLabelsEnabled={setPlanetLabelsEnabled}
+            />
 
             <PlanetMenu
                 selectedPlanet={selectedPlanet}
@@ -417,6 +444,9 @@ const SolarSystemScene = ({
     selectedPlanet,
     focusedTarget,
     onPlanetPosition,
+    orbitRingsEnabled,
+    orbitLinesEnabled,
+    planetLabelsEnabled,
 }: {
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
@@ -424,6 +454,9 @@ const SolarSystemScene = ({
     selectedPlanet: string | null;
     focusedTarget: FocusTarget;
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
+    orbitRingsEnabled: boolean;
+    orbitLinesEnabled: boolean;
+    planetLabelsEnabled: boolean;
 }) => {
     const sunRef = useRef<THREE.Group>(null);
     const sunMatRef = useRef<THREE.MeshStandardMaterial>(null);
@@ -442,7 +475,6 @@ const SolarSystemScene = ({
         if (haloMatRef.current) haloMatRef.current.opacity = 0.08 * breathe;
     });
 
-    // ✅ Memoize radii once; avoids repeated mapOrbit calls in 3 separate maps
     const orbitRadii = useMemo(() => {
         return PLANETS.map((p) => ({
             name: p.name,
@@ -491,31 +523,31 @@ const SolarSystemScene = ({
                 </mesh>
             </group>
 
-            {/* ✅ Orbit rings (keys unique + thinner band) */}
-            {orbitRadii.map(({ name, radius }) => (
-                <mesh
-                    key={`${name}-orbitRing`}
-                    rotation={[-Math.PI / 2, 0, 0]}
-                    position={[0, ORBIT_Y_LIFT, 0]}
-                    renderOrder={-1}
-                >
-                    <ringGeometry args={[radius - ORBIT_RING_HALF_WIDTH, radius + ORBIT_RING_HALF_WIDTH, 256]} />
-                    <meshBasicMaterial
-                        color="#b9c1cc"
-                        side={THREE.DoubleSide}
-                        transparent
-                        opacity={0.18}
-                        depthWrite={false}
-                        blending={THREE.AdditiveBlending}
-                        toneMapped={false}
-                    />
-                </mesh>
-            ))}
+            {/* Orbit rings */}
+            {orbitRingsEnabled &&
+                orbitRadii.map(({ name, radius }) => (
+                    <mesh
+                        key={`${name}-orbitRing`}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[0, ORBIT_Y_LIFT, 0]}
+                        renderOrder={-1}
+                    >
+                        <ringGeometry args={[radius - ORBIT_RING_HALF_WIDTH, radius + ORBIT_RING_HALF_WIDTH, 256]} />
+                        <meshBasicMaterial
+                            color="#b9c1cc"
+                            side={THREE.DoubleSide}
+                            transparent
+                            opacity={0.18}
+                            depthWrite={false}
+                            blending={THREE.AdditiveBlending}
+                            toneMapped={false}
+                        />
+                    </mesh>
+                ))}
 
-            {/* ✅ Orbit dashed lines (memoized points per radius) */}
-            {orbitRadii.map(({ name, radius }) => (
-                <OrbitLine key={`${name}-orbitLine`} radius={radius} opacity={0.25} />
-            ))}
+            {/* Orbit dashed lines */}
+            {orbitLinesEnabled &&
+                orbitRadii.map(({ name, radius }) => <OrbitLine key={`${name}-orbitLine`} radius={radius} opacity={0.25} />)}
 
             {PLANETS.map((p) => (
                 <Planet
@@ -531,6 +563,7 @@ const SolarSystemScene = ({
                     onPlanetPosition={onPlanetPosition}
                     angle={(p as any).angle}
                     hasRings={(p as any).hasRings}
+                    planetLabelsEnabled={planetLabelsEnabled}
                 />
             ))}
         </>
@@ -557,6 +590,7 @@ const Planet = ({
     selectedPlanet,
     focusedTarget,
     onPlanetPosition,
+    planetLabelsEnabled,
 }: PlanetProps & {
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
@@ -566,6 +600,9 @@ const Planet = ({
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
     angle?: number;
     hasRings?: boolean;
+
+    // ✅ NEW
+    planetLabelsEnabled: boolean;
 }) => {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef = useRef<THREE.Mesh>(null);
@@ -647,7 +684,10 @@ const Planet = ({
 
             {name === 'Jupiter' && <JupiterAtmosphere radius={radius} />}
             {hasRings && <SaturnRings planetRadius={radius} />}
-            {hovered && <PlanetTooltip name={name} radius={radius} color={color} />}
+
+            {/* ✅ NEW: always-on label controlled by scene toggle */}
+            {planetLabelsEnabled && <PlanetLabel name={name} radius={radius} color={color} />}
+
             {name === 'Earth' && <EarthMoon earthRadius={radius} />}
         </group>
     );
@@ -739,7 +779,11 @@ const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     );
 };
 
-const PlanetTooltip = ({
+/**
+ * ✅ Always-on planet label with fixed reasonable size:
+ * We scale the billboard based on camera distance so it looks roughly constant in screen space.
+ */
+const PlanetLabel = ({
     name,
     radius,
     color,
@@ -748,8 +792,38 @@ const PlanetTooltip = ({
     radius: number;
     color?: string;
 }) => {
+    const groupRef = useRef<THREE.Group>(null);
+    const { camera } = useThree();
+
+    // tweak to taste
+    const BASE = 0.012;
+    const MIN = 0.9;
+    const MAX = 6.0;
+
+    const tmpPos = useMemo(() => new THREE.Vector3(), []);
+    const tmpCam = useMemo(() => new THREE.Vector3(), []);
+
+    useFrame(() => {
+        const g = groupRef.current;
+        if (!g) return;
+
+        g.getWorldPosition(tmpPos);
+        camera.getWorldPosition(tmpCam);
+
+        const d = tmpPos.distanceTo(tmpCam);
+        const s = THREE.MathUtils.clamp(d * BASE, MIN, MAX);
+        g.scale.setScalar(s);
+    });
+
     return (
-        <Billboard position={[0, radius * 1.75, 0]} follow lockX={false} lockY={false} lockZ={false}>
+        <Billboard
+            ref={groupRef}
+            position={[0, radius * 1.85, 0]}
+            follow
+            lockX={false}
+            lockY={false}
+            lockZ={false}
+        >
             <mesh renderOrder={10}>
                 <planeGeometry args={[2.6, 0.9]} />
                 <meshBasicMaterial transparent opacity={0.32} color="#000000" depthWrite={false} />
