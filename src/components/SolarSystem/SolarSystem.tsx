@@ -1,4 +1,3 @@
-// SolarSystem.tsx
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +19,8 @@ import * as THREE from 'three';
 import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { useSearchParams } from 'next/navigation';
 import { ToneMappingMode } from 'postprocessing';
+import { FaSliders, FaVolumeHigh, FaVolumeXmark } from 'react-icons/fa6';
+
 import PlanetMenu from './PlanetMenu';
 import SceneSettingsMenu from './SceneSettingsMenu';
 import AsteroidBelt from './AsteroidBelt';
@@ -55,24 +56,17 @@ const HZ_AU = {
     coldOuter: 5.5,
 } as const;
 
-/**
- * Map real-ish distances (million km) into explorable world units
- */
 const mapOrbitFromAvgDistance = (avgMillionKm?: number, fallback = 100) => {
     const d = avgMillionKm ?? fallback;
     return ORBIT_MULT * Math.pow(d, ORBIT_POWER);
 };
 
-/**
- * Map real radius (km) into usable planet radii while keeping proportions
- */
 const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
     if (!realRadiusKm) return fallback;
     const ratio = realRadiusKm / SUN_REAL_RADIUS_KM;
     return Math.max(PLANET_MIN_RADIUS, SUN_VISUAL_RADIUS * Math.pow(ratio, RADIUS_POWER));
 };
 
-// kept from your code — fine for local static textures
 const useTexture = (path?: string) =>
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
@@ -80,16 +74,7 @@ const useTexture = (path?: string) =>
 type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
 
-/**
- * ✅ Memoized dashed orbit line – points computed once per radius
- */
-const OrbitLine = React.memo(function OrbitLine({
-    radius,
-    opacity = 0.25,
-}: {
-    radius: number;
-    opacity?: number;
-}) {
+const OrbitLine = React.memo(function OrbitLine({ radius, opacity = 0.25 }: { radius: number; opacity?: number }) {
     const points = useMemo(() => {
         const segments = 384;
         const pts: THREE.Vector3[] = [];
@@ -117,7 +102,6 @@ const OrbitLine = React.memo(function OrbitLine({
     );
 });
 
-// soft alpha texture for band edges (reused for all 3 rings)
 function createBandAlphaTexture(size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -148,9 +132,6 @@ function createBandAlphaTexture(size = 512) {
     return tex;
 }
 
-/**
- * ✅ Habitable Zone as orbit-aligned annular bands (distance from Sun)
- */
 const HabitableZone = React.memo(function HabitableZone() {
     const alphaTex = useMemo(() => createBandAlphaTexture(512), []);
 
@@ -219,9 +200,10 @@ const SolarSystem = () => {
     // habitable zone toggle
     const [habitableZoneEnabled, setHabitableZoneEnabled] = useState(true);
 
-    // ✅ NEW immersion toggles
-    const [timeScale, setTimeScale] = useState(0.18); // time warp
-    const [audioEnabled, setAudioEnabled] = useState(true);
+    // immersion toggles
+    const [timeScale, setTimeScale] = useState(0.18);
+    const [ambientEnabled, setAmbientEnabled] = useState(true);
+    const [sfxEnabled, setSfxEnabled] = useState(true);
     const [asteroidBeltEnabled, setAsteroidBeltEnabled] = useState(true);
     const [atmospheresEnabled, setAtmospheresEnabled] = useState(true);
 
@@ -275,7 +257,10 @@ const SolarSystem = () => {
                 <Suspense fallback={null}>
                     <PanoramaBackground texturePath="/solar-system.png" driftSpeed={0.0025} />
                 </Suspense>
-                {audioEnabled && <GlobalAmbience enabled={audioEnabled} />}
+
+                {/* global ambience (constant bed) */}
+                {ambientEnabled && <GlobalAmbience enabled={ambientEnabled} />}
+
                 <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={bloomEnabled ? 1.4 : 0} />
                     <ToneMapping
@@ -308,7 +293,7 @@ const SolarSystem = () => {
                     planetLabelsEnabled={planetLabelsEnabled}
                     habitableZoneEnabled={habitableZoneEnabled}
                     timeScale={timeScale}
-                    audioEnabled={audioEnabled}
+                    ambientEnabled={ambientEnabled}
                     asteroidBeltEnabled={asteroidBeltEnabled}
                     atmospheresEnabled={atmospheresEnabled}
                 />
@@ -337,28 +322,42 @@ const SolarSystem = () => {
                 <Environment preset="night" background={false} />
             </Canvas>
 
-            <SceneSettingsMenu
-                isOpen={isSceneMenuOpen}
-                setIsOpen={setIsSceneMenuOpen}
-                bloomEnabled={bloomEnabled}
-                setBloomEnabled={setBloomEnabled}
-                orbitRingsEnabled={orbitRingsEnabled}
-                setOrbitRingsEnabled={setOrbitRingsEnabled}
-                orbitLinesEnabled={orbitLinesEnabled}
-                setOrbitLinesEnabled={setOrbitLinesEnabled}
-                planetLabelsEnabled={planetLabelsEnabled}
-                setPlanetLabelsEnabled={setPlanetLabelsEnabled}
-                habitableZoneEnabled={habitableZoneEnabled}
-                setHabitableZoneEnabled={setHabitableZoneEnabled}
-                timeScale={timeScale}
-                setTimeScale={setTimeScale}
-                audioEnabled={audioEnabled}
-                setAudioEnabled={setAudioEnabled}
-                asteroidBeltEnabled={asteroidBeltEnabled}
-                setAsteroidBeltEnabled={setAsteroidBeltEnabled}
-                atmospheresEnabled={atmospheresEnabled}
-                setAtmospheresEnabled={setAtmospheresEnabled}
-            />
+            {/* Ambient toggle button */}
+            <aside className="pointer-events-none absolute right-4 top-4 z-50 flex items-start gap-2">
+                <button
+                    type="button"
+                    aria-label={ambientEnabled ? 'Mute ambience' : 'Enable ambience'}
+                    aria-pressed={ambientEnabled}
+                    onClick={() => setAmbientEnabled((v) => !v)}
+                    className="pointer-events-auto flex items-center gap-2 rounded-lg bg-gray-900/40 px-3 py-2 text-sm text-white shadow-lg backdrop-blur-sm hover:bg-gray-900/55 focus:outline-none"
+                >
+                    {ambientEnabled ? <FaVolumeHigh /> : <FaVolumeXmark />}
+                    <span className="hidden sm:inline">Ambience</span>
+                </button>
+
+                <SceneSettingsMenu
+                    isOpen={isSceneMenuOpen}
+                    setIsOpen={setIsSceneMenuOpen}
+                    bloomEnabled={bloomEnabled}
+                    setBloomEnabled={setBloomEnabled}
+                    orbitRingsEnabled={orbitRingsEnabled}
+                    setOrbitRingsEnabled={setOrbitRingsEnabled}
+                    orbitLinesEnabled={orbitLinesEnabled}
+                    setOrbitLinesEnabled={setOrbitLinesEnabled}
+                    planetLabelsEnabled={planetLabelsEnabled}
+                    setPlanetLabelsEnabled={setPlanetLabelsEnabled}
+                    habitableZoneEnabled={habitableZoneEnabled}
+                    setHabitableZoneEnabled={setHabitableZoneEnabled}
+                    timeScale={timeScale}
+                    setTimeScale={setTimeScale}
+                    sfxEnabled={sfxEnabled}
+                    setSfxEnabled={setSfxEnabled}
+                    asteroidBeltEnabled={asteroidBeltEnabled}
+                    setAsteroidBeltEnabled={setAsteroidBeltEnabled}
+                    atmospheresEnabled={atmospheresEnabled}
+                    setAtmospheresEnabled={setAtmospheresEnabled}
+                />
+            </aside>
 
             <PlanetMenu
                 selectedPlanet={selectedPlanet}
@@ -369,7 +368,7 @@ const SolarSystem = () => {
                 setFocusedTarget={setFocusedTarget}
                 toggleCameraRotation={toggleCameraRotation}
                 isCameraRotationEnabled={isCameraRotationEnabled}
-                audioEnabled={audioEnabled}
+                sfxEnabled={sfxEnabled}
             />
 
             <Loader />
@@ -377,13 +376,7 @@ const SolarSystem = () => {
     );
 };
 
-const PanoramaBackground = ({
-    texturePath,
-    driftSpeed = 0.0,
-}: {
-    texturePath: string;
-    driftSpeed?: number;
-}) => {
+const PanoramaBackground = ({ texturePath, driftSpeed = 0.0 }: { texturePath: string; driftSpeed?: number }) => {
     const texture = useTextureDrei(texturePath);
     const { scene } = useThree();
 
@@ -439,12 +432,7 @@ const GalacticDustPlane = ({ outermostOrbit }: { outermostOrbit: number }) => {
     });
 
     return (
-        <mesh
-            ref={planeRef}
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, -outermostOrbit * 0.35, 0]}
-            renderOrder={-10}
-        >
+        <mesh ref={planeRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -outermostOrbit * 0.35, 0]} renderOrder={-10}>
             <planeGeometry args={[size, size, 1, 1]} />
             <meshBasicMaterial
                 map={tex}
@@ -565,7 +553,7 @@ const SolarSystemScene = ({
     planetLabelsEnabled,
     habitableZoneEnabled,
     timeScale,
-    audioEnabled,
+    ambientEnabled,
     asteroidBeltEnabled,
     atmospheresEnabled,
 }: {
@@ -579,9 +567,8 @@ const SolarSystemScene = ({
     orbitLinesEnabled: boolean;
     planetLabelsEnabled: boolean;
     habitableZoneEnabled: boolean;
-
     timeScale: number;
-    audioEnabled: boolean;
+    ambientEnabled: boolean;
     asteroidBeltEnabled: boolean;
     atmospheresEnabled: boolean;
 }) => {
@@ -617,17 +604,15 @@ const SolarSystemScene = ({
     }, []);
 
     useEffect(() => {
-        if (!audioEnabled) return;
+        if (!ambientEnabled) return;
         const a = sunAudioRef.current;
         if (!a) return;
 
-        a.setVolume(0.22);          // sun intensity
-        a.setRefDistance(120);      // distance at which volume is “normal”
-        a.setRolloffFactor(1.6);    // how fast it fades
-        a.setDistanceModel('exponential'); // feels spacey
-
-    }, [audioEnabled]);
-
+        a.setVolume(0.22);
+        a.setRefDistance(120);
+        a.setRolloffFactor(1.6);
+        a.setDistanceModel('exponential');
+    }, [ambientEnabled]);
 
     return (
         <>
@@ -669,36 +654,18 @@ const SolarSystemScene = ({
                     />
                 </mesh>
 
-                {audioEnabled && (
-                    <PositionalAudio
-                        ref={sunAudioRef}
-                        url="/sfx/sun-hiss.mp3"
-                        distance={650} // tighter range
-                        loop
-                        autoplay
-                    />
+                {ambientEnabled && (
+                    <PositionalAudio ref={sunAudioRef} url="/sfx/sun-hiss.mp3" distance={650} loop autoplay />
                 )}
             </group>
 
             {habitableZoneEnabled && <HabitableZone />}
 
-            {asteroidBeltEnabled && (
-                <AsteroidBelt
-                    inner={belt.inner}
-                    outer={belt.outer}
-                    count={2200}
-                    ySpread={belt.inner * 0.004}
-                />
-            )}
+            {asteroidBeltEnabled && <AsteroidBelt inner={belt.inner} outer={belt.outer} count={2200} ySpread={belt.inner * 0.004} />}
 
             {orbitRingsEnabled &&
                 orbitRadii.map(({ name, radius }) => (
-                    <mesh
-                        key={`${name}-orbitRing`}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        position={[0, ORBIT_Y_LIFT, 0]}
-                        renderOrder={-1}
-                    >
+                    <mesh key={`${name}-orbitRing`} rotation={[-Math.PI / 2, 0, 0]} position={[0, ORBIT_Y_LIFT, 0]} renderOrder={-1}>
                         <ringGeometry args={[radius - ORBIT_RING_HALF_WIDTH, radius + ORBIT_RING_HALF_WIDTH, 256]} />
                         <meshBasicMaterial
                             color="#b9c1cc"
@@ -770,7 +737,6 @@ const Planet = ({
     angle?: number;
     hasRings?: boolean;
     planetLabelsEnabled: boolean;
-
     timeScale: number;
     atmospheresEnabled: boolean;
 }) => {
@@ -831,14 +797,7 @@ const Planet = ({
             }}
             scale={scale}
         >
-            <Trail
-                width={trailWidth}
-                length={trailLength}
-                color={color ?? '#ffffff'}
-                attenuation={(t) => t * t}
-                decay={1}
-                local={false}
-            >
+            <Trail width={trailWidth} length={trailLength} color={color ?? '#ffffff'} attenuation={(t) => t * t} decay={1} local={false}>
                 <mesh ref={meshRef} castShadow receiveShadow>
                     <sphereGeometry args={[radius, 64, 64]} />
                     <meshStandardMaterial
@@ -855,15 +814,9 @@ const Planet = ({
             {name === 'Jupiter' && <JupiterAtmosphere radius={radius} />}
             {hasRings && <SaturnRings planetRadius={radius} />}
 
-            {atmospheresEnabled && name === 'Earth' && (
-                <AtmosphereShell radius={radius} color="#66c7ff" opacity={0.08} scale={1.035} />
-            )}
-            {atmospheresEnabled && name === 'Venus' && (
-                <AtmosphereShell radius={radius} color="#ffd7a6" opacity={0.06} scale={1.04} pulse={0.02} />
-            )}
-            {atmospheresEnabled && name === 'Mars' && (
-                <AtmosphereShell radius={radius} color="#ffb199" opacity={0.03} scale={1.03} pulse={0.02} />
-            )}
+            {atmospheresEnabled && name === 'Earth' && <AtmosphereShell radius={radius} color="#66c7ff" opacity={0.08} scale={1.035} />}
+            {atmospheresEnabled && name === 'Venus' && <AtmosphereShell radius={radius} color="#ffd7a6" opacity={0.06} scale={1.04} pulse={0.02} />}
+            {atmospheresEnabled && name === 'Mars' && <AtmosphereShell radius={radius} color="#ffb199" opacity={0.03} scale={1.03} pulse={0.02} />}
 
             {planetLabelsEnabled && <PlanetLabel name={name} radius={radius} color={color} />}
 
@@ -871,6 +824,8 @@ const Planet = ({
         </group>
     );
 };
+
+// ---------- existing helper components below (unchanged) ----------
 
 const SaturnRings = ({ planetRadius }: { planetRadius: number }) => {
     const tex = useMemo(() => createSaturnRingsTexture(1024), []);
@@ -939,14 +894,7 @@ const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     return (
         <mesh renderOrder={1}>
             <sphereGeometry args={[radius * 1.07, 48, 48]} />
-            <meshBasicMaterial
-                ref={matRef}
-                color="#ffe0b6"
-                transparent
-                opacity={0.12}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-            />
+            <meshBasicMaterial ref={matRef} color="#ffe0b6" transparent opacity={0.12} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
     );
 };
@@ -1019,7 +967,6 @@ const EarthMoon = ({ earthRadius }: { earthRadius: number }) => {
     );
 };
 
-
 function GlobalAmbience({ enabled }: { enabled: boolean }) {
     const audioRef = useRef<THREE.Audio | null>(null);
     const listenerRef = useRef<THREE.AudioListener | null>(null);
@@ -1041,16 +988,13 @@ function GlobalAmbience({ enabled }: { enabled: boolean }) {
             (buffer) => {
                 audio.setBuffer(buffer);
                 audio.setLoop(true);
-                audio.setVolume(0.16); // constant bed
-                // attempt autoplay; if blocked, first pointerdown will start it
+                audio.setVolume(0.16);
                 try {
                     audio.play();
                 } catch { }
             },
             undefined,
-            () => {
-                // ignore load errors here (you'll see 404 in network anyway)
-            },
+            () => { },
         );
 
         const tryStart = () => {

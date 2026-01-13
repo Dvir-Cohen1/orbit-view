@@ -22,12 +22,11 @@ type SceneSettingsMenuProps = {
      habitableZoneEnabled: boolean;
      setHabitableZoneEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 
-     // ✅ NEW
      timeScale: number;
      setTimeScale: React.Dispatch<React.SetStateAction<number>>;
 
-     audioEnabled: boolean;
-     setAudioEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+     sfxEnabled: boolean;
+     setSfxEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 
      asteroidBeltEnabled: boolean;
      setAsteroidBeltEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -44,12 +43,12 @@ type Settings = {
      habitableZoneEnabled: boolean;
 
      timeWarp?: 'slow' | 'normal' | 'fast';
-     audioEnabled?: boolean;
+     sfxEnabled?: boolean;
      asteroidBeltEnabled?: boolean;
      atmospheresEnabled?: boolean;
 };
 
-const LS_KEY = 'ov_scene_settings_v3';
+const LS_KEY = 'ov_scene_settings_v4';
 
 function safeReadSettings(): Partial<Settings> | null {
      try {
@@ -65,9 +64,7 @@ function safeReadSettings(): Partial<Settings> | null {
 function safeWriteSettings(settings: Settings) {
      try {
           window.localStorage.setItem(LS_KEY, JSON.stringify(settings));
-     } catch {
-          // ignore
-     }
+     } catch { }
 }
 
 const ToggleRow = React.memo(function ToggleRow({
@@ -117,11 +114,10 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           setPlanetLabelsEnabled,
           habitableZoneEnabled,
           setHabitableZoneEnabled,
-
           timeScale,
           setTimeScale,
-          audioEnabled,
-          setAudioEnabled,
+          sfxEnabled,
+          setSfxEnabled,
           asteroidBeltEnabled,
           setAsteroidBeltEnabled,
           atmospheresEnabled,
@@ -136,7 +132,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                lines: `${baseId}-lines`,
                labels: `${baseId}-labels`,
                hab: `${baseId}-hab`,
-               audio: `${baseId}-audio`,
+               sfx: `${baseId}-sfx`,
                belt: `${baseId}-belt`,
                atm: `${baseId}-atm`,
           }),
@@ -160,7 +156,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           if (saved.timeWarp === 'normal') setTimeScale(0.18);
           if (saved.timeWarp === 'fast') setTimeScale(0.42);
 
-          if (typeof saved.audioEnabled === 'boolean') setAudioEnabled(saved.audioEnabled);
+          if (typeof saved.sfxEnabled === 'boolean') setSfxEnabled(saved.sfxEnabled);
           if (typeof saved.asteroidBeltEnabled === 'boolean') setAsteroidBeltEnabled(saved.asteroidBeltEnabled);
           if (typeof saved.atmospheresEnabled === 'boolean') setAtmospheresEnabled(saved.atmospheresEnabled);
 
@@ -177,7 +173,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                planetLabelsEnabled,
                habitableZoneEnabled,
                timeWarp,
-               audioEnabled,
+               sfxEnabled,
                asteroidBeltEnabled,
                atmospheresEnabled,
           });
@@ -188,7 +184,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
           planetLabelsEnabled,
           habitableZoneEnabled,
           timeScale,
-          audioEnabled,
+          sfxEnabled,
           asteroidBeltEnabled,
           atmospheresEnabled,
      ]);
@@ -205,7 +201,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
      }, [isOpen, close]);
 
      return (
-          <aside className="pointer-events-none absolute right-4 top-4 z-50">
+          <div className="pointer-events-none">
                <button
                     type="button"
                     aria-label={isOpen ? 'Close scene settings' : 'Open scene settings'}
@@ -241,10 +237,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                                    <button
                                         type="button"
                                         onClick={() => setTimeScale(0.09)}
-                                        className={[
-                                             'rounded-md px-2 py-1 text-xs',
-                                             timeScale <= 0.1 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10',
-                                        ].join(' ')}
+                                        className={['rounded-md px-2 py-1 text-xs', timeScale <= 0.1 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10'].join(' ')}
                                    >
                                         Slow
                                    </button>
@@ -261,10 +254,7 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                                    <button
                                         type="button"
                                         onClick={() => setTimeScale(0.42)}
-                                        className={[
-                                             'rounded-md px-2 py-1 text-xs',
-                                             timeScale >= 0.3 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10',
-                                        ].join(' ')}
+                                        className={['rounded-md px-2 py-1 text-xs', timeScale >= 0.3 ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10'].join(' ')}
                                    >
                                         Fast
                                    </button>
@@ -312,12 +302,13 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                                    onChange={setHabitableZoneEnabled}
                               />
 
+                              {/* ✅ NEW: FX-only toggle */}
                               <ToggleRow
-                                   id={ids.audio}
-                                   label="Audio"
-                                   description="UI sounds + subtle space ambience"
-                                   checked={audioEnabled}
-                                   onChange={setAudioEnabled}
+                                   id={ids.sfx}
+                                   label="UI sound FX"
+                                   description="Button clicks, toggles, focus sounds"
+                                   checked={sfxEnabled}
+                                   onChange={setSfxEnabled}
                               />
 
                               <ToggleRow
@@ -338,6 +329,6 @@ export default function SceneSettingsMenu(props: SceneSettingsMenuProps) {
                          </div>
                     </div>
                ) : null}
-          </aside>
+          </div>
      );
 }

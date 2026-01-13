@@ -15,7 +15,6 @@ export function useSfx(
 ) {
     const audiosRef = useRef<Partial<Record<Key, HTMLAudioElement>>>({});
 
-    // Create audio elements only on the client *after* mount
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
@@ -28,6 +27,7 @@ export function useSfx(
             const a = window.document.createElement('audio');
             a.src = src;
             a.preload = 'auto';
+            // a.playsInline = true;
             a.volume = volume;
 
             next[k] = a;
@@ -36,7 +36,6 @@ export function useSfx(
         audiosRef.current = next;
 
         return () => {
-            // cleanup
             (Object.values(audiosRef.current) as HTMLAudioElement[]).forEach((a) => {
                 try {
                     a.pause();
@@ -47,7 +46,6 @@ export function useSfx(
         };
     }, [map, volume]);
 
-    // Keep volume in sync if you tweak it later
     useEffect(() => {
         (Object.values(audiosRef.current) as HTMLAudioElement[]).forEach((a) => {
             a.volume = volume;

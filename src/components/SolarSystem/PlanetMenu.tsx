@@ -1,14 +1,7 @@
-// PlanetMenu.tsx
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { useRouter } from 'next/navigation';
 import React, { useMemo } from 'react';
-import {
-  FaCirclePause,
-  FaCirclePlay,
-  FaChevronDown,
-  FaChevronUp,
-  FaArrowRotateLeft,
-} from 'react-icons/fa6';
+import { FaCirclePause, FaCirclePlay, FaChevronDown, FaChevronUp, FaArrowRotateLeft } from 'react-icons/fa6';
 import { useSfx } from '@/hooks/useSfx';
 
 type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
@@ -25,7 +18,7 @@ type PlanetMenuProps = {
 
   toggleCameraRotation: () => void;
 
-  audioEnabled: boolean;
+  sfxEnabled: boolean;
 };
 
 const PlanetMenu = ({
@@ -37,7 +30,7 @@ const PlanetMenu = ({
   setFocusedTarget,
   toggleCameraRotation,
   isCameraRotationEnabled,
-  audioEnabled,
+  sfxEnabled,
 }: PlanetMenuProps) => {
   const router = useRouter();
   const planets = useMemo(() => PLANETS, []);
@@ -48,7 +41,7 @@ const PlanetMenu = ({
       toggle: '/sfx/ui-toggle.mp3',
       focus: '/sfx/ui-focus.mp3',
     },
-    { volume: 0.22, enabled: audioEnabled },
+    { volume: 0.22, enabled: sfxEnabled },
   );
 
   const handleToggleMenu = () => setIsPlanetMenuOpen((prev) => !prev);
