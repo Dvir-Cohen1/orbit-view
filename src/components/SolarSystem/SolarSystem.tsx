@@ -275,7 +275,7 @@ const SolarSystem = () => {
                 <Suspense fallback={null}>
                     <PanoramaBackground texturePath="/solar-system.png" driftSpeed={0.0025} />
                 </Suspense>
-
+                {audioEnabled && <GlobalAmbience enabled={audioEnabled} />}
                 <EffectComposer>
                     <Bloom mipmapBlur luminanceThreshold={1} intensity={bloomEnabled ? 1.4 : 0} />
                     <ToneMapping
@@ -618,9 +618,14 @@ const SolarSystemScene = ({
 
     useEffect(() => {
         if (!audioEnabled) return;
+        const a = sunAudioRef.current;
+        if (!a) return;
 
-        // set volume as soon as the node exists
-        sunAudioRef.current?.setVolume(0.18);
+        a.setVolume(0.22);          // sun intensity
+        a.setRefDistance(120);      // distance at which volume is “normal”
+        a.setRolloffFactor(1.6);    // how fast it fades
+        a.setDistanceModel('exponential'); // feels spacey
+
     }, [audioEnabled]);
 
 
@@ -667,8 +672,8 @@ const SolarSystemScene = ({
                 {audioEnabled && (
                     <PositionalAudio
                         ref={sunAudioRef}
-                        url="/sfx/space-ambience.mp3"
-                        distance={900}
+                        url="/sfx/sun-hiss.mp3"
+                        distance={650} // tighter range
                         loop
                         autoplay
                     />
@@ -1013,5 +1018,63 @@ const EarthMoon = ({ earthRadius }: { earthRadius: number }) => {
         </group>
     );
 };
+
+
+function GlobalAmbience({ enabled }: { enabled: boolean }) {
+    const audioRef = useRef<THREE.Audio | null>(null);
+    const listenerRef = useRef<THREE.AudioListener | null>(null);
+    const { camera } = useThree();
+
+    useEffect(() => {
+        if (!enabled) return;
+
+        const listener = new THREE.AudioListener();
+        listenerRef.current = listener;
+        camera.add(listener);
+
+        const audio = new THREE.Audio(listener);
+        audioRef.current = audio;
+
+        const loader = new THREE.AudioLoader();
+        loader.load(
+            '/sfx/space-ambience.mp3',
+            (buffer) => {
+                audio.setBuffer(buffer);
+                audio.setLoop(true);
+                audio.setVolume(0.16); // constant bed
+                // attempt autoplay; if blocked, first pointerdown will start it
+                try {
+                    audio.play();
+                } catch { }
+            },
+            undefined,
+            () => {
+                // ignore load errors here (you'll see 404 in network anyway)
+            },
+        );
+
+        const tryStart = () => {
+            if (!audio.isPlaying && audio.buffer) {
+                try {
+                    audio.play();
+                } catch { }
+            }
+        };
+
+        window.addEventListener('pointerdown', tryStart, { once: true });
+
+        return () => {
+            window.removeEventListener('pointerdown', tryStart);
+            try {
+                audio.stop();
+            } catch { }
+            camera.remove(listener);
+            listenerRef.current = null;
+            audioRef.current = null;
+        };
+    }, [enabled, camera]);
+
+    return null;
+}
 
 export default SolarSystem;

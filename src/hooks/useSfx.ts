@@ -61,11 +61,11 @@ export function useSfx(
             if (!a) return;
 
             try {
-                a.currentTime = 0;
-                void a.play();
-            } catch {
-                // autoplay/user-gesture restrictions: ignore
-            }
+                const node = a.cloneNode(true) as HTMLAudioElement;
+                node.volume = a.volume;
+                node.currentTime = 0;
+                void node.play();
+            } catch {}
         },
         [enabled]
     );
