@@ -1,32 +1,41 @@
-// SolarSystem.tsx
 'use client';
 
-import React, { useState, useRef, useMemo, useCallback, useEffect, Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
-    OrbitControls,
-    Stars,
+    Billboard,
     Environment,
+    Line,
     Loader,
+    OrbitControls,
+    PositionalAudio,
+    Stars,
+    Text,
+    Trail,
     useCursor,
     useTexture as useTextureDrei,
-    Trail,
-    Billboard,
-    Text,
 } from '@react-three/drei';
 import * as THREE from 'three';
+import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { useSearchParams } from 'next/navigation';
+import { ToneMappingMode } from 'postprocessing';
+import { FaSliders, FaVolumeHigh, FaVolumeXmark } from 'react-icons/fa6';
+
 import PlanetMenu from './PlanetMenu';
+import SceneSettingsMenu from './SceneSettingsMenu';
+import AsteroidBelt from './AsteroidBelt';
+import AtmosphereShell from './AtmosphereShell';
 import { PLANETS } from '@/constants/solarSystem.constants';
 import { PlanetProps } from '../../../globals';
-import { EffectComposer, Bloom, ToneMapping, Vignette } from '@react-three/postprocessing';
+
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import type { PositionalAudio as PositionalAudioImpl } from 'three';
 
 const MAX_CAMERA_DISTANCE = 51000;
 
 /**
  * ---------- Immersive realism knobs ----------
  */
-const TIME_SCALE = 0.18;
 const ORBIT_POWER = 0.58;
 const ORBIT_MULT = 26;
 
@@ -36,17 +45,22 @@ const SUN_REAL_RADIUS_KM = 696_340;
 const RADIUS_POWER = 0.42;
 const PLANET_MIN_RADIUS = 0.35;
 
-/**
- * Map real-ish distances (million km) into explorable world units
- */
+const ORBIT_Y_LIFT = 0.02;
+const ORBIT_RING_HALF_WIDTH = 0.12;
+
+const AU_MILLION_KM = 149.6;
+const HZ_AU = {
+    habInner: 0.95,
+    habOuter: 1.5,
+    hotInner: 0.35,
+    coldOuter: 5.5,
+} as const;
+
 const mapOrbitFromAvgDistance = (avgMillionKm?: number, fallback = 100) => {
     const d = avgMillionKm ?? fallback;
     return ORBIT_MULT * Math.pow(d, ORBIT_POWER);
 };
 
-/**
- * Map real radius (km) into usable planet radii while keeping proportions
- */
 const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
     if (!realRadiusKm) return fallback;
     const ratio = realRadiusKm / SUN_REAL_RADIUS_KM;
@@ -54,16 +68,144 @@ const mapRadiusFromReal = (realRadiusKm?: number, fallback = 1) => {
 };
 
 const useTexture = (path?: string) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useMemo(() => (path ? new THREE.TextureLoader().load(path) : null), [path]);
 
 type FocusTarget = { type: 'sun' } | { type: 'planet'; name: string } | null;
 type PlanetPositionStore = Record<string, THREE.Vector3>;
 
+const OrbitLine = React.memo(function OrbitLine({ radius, opacity = 0.25 }: { radius: number; opacity?: number }) {
+    const points = useMemo(() => {
+        const segments = 384;
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+        }
+        return pts;
+    }, [radius]);
+
+    return (
+        <group position={[0, ORBIT_Y_LIFT, 0]}>
+            <Line
+                points={points}
+                color="#b9c1cc"
+                transparent
+                opacity={opacity}
+                lineWidth={1}
+                dashed
+                dashSize={12}
+                gapSize={10}
+                toneMapped={false}
+            />
+        </group>
+    );
+});
+
+function createBandAlphaTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = 8;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        const fallback = new THREE.Texture();
+        fallback.needsUpdate = true;
+        return fallback;
+    }
+
+    const g = ctx.createLinearGradient(0, 0, size, 0);
+    g.addColorStop(0.0, 'rgba(255,255,255,0.0)');
+    g.addColorStop(0.12, 'rgba(255,255,255,0.35)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+    g.addColorStop(0.88, 'rgba(255,255,255,0.35)');
+    g.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, canvas.height);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+const HabitableZone = React.memo(function HabitableZone() {
+    const alphaTex = useMemo(() => createBandAlphaTexture(512), []);
+
+    const radii = useMemo(() => {
+        const hotInner = mapOrbitFromAvgDistance(HZ_AU.hotInner * AU_MILLION_KM);
+        const hotOuter = mapOrbitFromAvgDistance(HZ_AU.habInner * AU_MILLION_KM);
+
+        const habInner = hotOuter;
+        const habOuter = mapOrbitFromAvgDistance(HZ_AU.habOuter * AU_MILLION_KM);
+
+        const coldInner = habOuter;
+        const coldOuter = mapOrbitFromAvgDistance(HZ_AU.coldOuter * AU_MILLION_KM);
+
+        return { hotInner, hotOuter, habInner, habOuter, coldInner, coldOuter };
+    }, []);
+
+    const commonMat = {
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        alphaMap: alphaTex,
+        opacity: 0.05,
+    };
+
+    const y = ORBIT_Y_LIFT + 0.012;
+
+    return (
+        <group rotation={[-Math.PI / 2, 0, 0]} position={[0, y, 0]} renderOrder={-2}>
+            <mesh>
+                <ringGeometry args={[radii.hotInner, radii.hotOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#ff3b3b" />
+            </mesh>
+
+            <mesh>
+                <ringGeometry args={[radii.habInner, radii.habOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#39ff88" opacity={0.11} />
+            </mesh>
+
+            <mesh>
+                <ringGeometry args={[radii.coldInner, radii.coldOuter, 256, 1]} />
+                <meshBasicMaterial {...commonMat} color="#3bb3ff" />
+            </mesh>
+        </group>
+    );
+});
+
 const SolarSystem = () => {
+    const searchParams = useSearchParams();
+
     const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null);
     const [focusedTarget, setFocusedTarget] = useState<FocusTarget>({ type: 'sun' });
     const [isPlanetMenuOpen, setIsPlanetMenuOpen] = useState(false);
     const [isCameraRotationEnabled, setIsCameraRotationEnabled] = useState(true);
+
+    // scene settings
+    const [isSceneMenuOpen, setIsSceneMenuOpen] = useState(false);
+    const [bloomEnabled, setBloomEnabled] = useState(true);
+    const [orbitRingsEnabled, setOrbitRingsEnabled] = useState(true);
+    const [orbitLinesEnabled, setOrbitLinesEnabled] = useState(true);
+
+    // labels toggle
+    const [planetLabelsEnabled, setPlanetLabelsEnabled] = useState(true);
+
+    // habitable zone toggle
+    const [habitableZoneEnabled, setHabitableZoneEnabled] = useState(true);
+
+    // immersion toggles
+    const [timeScale, setTimeScale] = useState(0.18);
+    const [ambientEnabled, setAmbientEnabled] = useState(true);
+    const [sfxEnabled, setSfxEnabled] = useState(true);
+    const [asteroidBeltEnabled, setAsteroidBeltEnabled] = useState(true);
+    const [atmospheresEnabled, setAtmospheresEnabled] = useState(true);
 
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
     const planetPositionsRef = useRef<PlanetPositionStore>({});
@@ -84,6 +226,13 @@ const SolarSystem = () => {
 
     const toggleCameraRotation = () => setIsCameraRotationEnabled((prev) => !prev);
 
+    useEffect(() => {
+        const focus = searchParams.get('focus');
+        if (!focus) return;
+        setSelectedPlanet(focus);
+        setFocusedTarget({ type: 'planet', name: focus });
+    }, [searchParams]);
+
     const outermostOrbit = useMemo(() => {
         let max = 0;
         for (const p of PLANETS) {
@@ -99,7 +248,8 @@ const SolarSystem = () => {
                 camera={{ position: [0, 10, 200], near: 0.1, far: 40000 }}
                 gl={{ logarithmicDepthBuffer: true }}
                 onCreated={({ gl }) => {
-                    gl.toneMappingExposure = 0.8;
+                    gl.toneMapping = THREE.NoToneMapping;
+                    gl.toneMappingExposure = 1;
                 }}
                 style={{ height: '100vh' }}
                 shadows
@@ -108,9 +258,19 @@ const SolarSystem = () => {
                     <PanoramaBackground texturePath="/solar-system.png" driftSpeed={0.0025} />
                 </Suspense>
 
+                {/* global ambience (constant bed) */}
+                {ambientEnabled && <GlobalAmbience enabled={ambientEnabled} />}
+
                 <EffectComposer>
-                    <Bloom mipmapBlur luminanceThreshold={1} intensity={1.4} />
-                    <ToneMapping />
+                    <Bloom mipmapBlur luminanceThreshold={1} intensity={bloomEnabled ? 1.4 : 0} />
+                    <ToneMapping
+                        adaptive={false}
+                        mode={ToneMappingMode.ACES_FILMIC}
+                        averageLuminance={1}
+                        middleGrey={0.6}
+                        maxLuminance={16}
+                        minLuminance={0.01}
+                    />
                     <Vignette eskil={false} offset={0.12} darkness={0.45} />
                 </EffectComposer>
 
@@ -128,6 +288,14 @@ const SolarSystem = () => {
                     selectedPlanet={selectedPlanet}
                     focusedTarget={focusedTarget}
                     onPlanetPosition={updatePlanetPosition}
+                    orbitRingsEnabled={orbitRingsEnabled}
+                    orbitLinesEnabled={orbitLinesEnabled}
+                    planetLabelsEnabled={planetLabelsEnabled}
+                    habitableZoneEnabled={habitableZoneEnabled}
+                    timeScale={timeScale}
+                    ambientEnabled={ambientEnabled}
+                    asteroidBeltEnabled={asteroidBeltEnabled}
+                    atmospheresEnabled={atmospheresEnabled}
                 />
 
                 <CameraController
@@ -151,8 +319,45 @@ const SolarSystem = () => {
                     zoomSpeed={1.4}
                 />
 
-                <Environment preset="night" />
+                <Environment preset="night" background={false} />
             </Canvas>
+
+            {/* Ambient toggle button */}
+            <aside className="pointer-events-none absolute right-4 top-4 z-50 flex items-start gap-2">
+                <button
+                    type="button"
+                    aria-label={ambientEnabled ? 'Mute ambience' : 'Enable ambience'}
+                    aria-pressed={ambientEnabled}
+                    onClick={() => setAmbientEnabled((v) => !v)}
+                    className="pointer-events-auto flex items-center gap-2 rounded-lg bg-gray-900/40 px-3 py-2 text-sm text-white shadow-lg backdrop-blur-sm hover:bg-gray-900/55 focus:outline-none"
+                >
+                    {ambientEnabled ? <FaVolumeHigh /> : <FaVolumeXmark />}
+                    <span className="hidden sm:inline">Ambience</span>
+                </button>
+
+                <SceneSettingsMenu
+                    isOpen={isSceneMenuOpen}
+                    setIsOpen={setIsSceneMenuOpen}
+                    bloomEnabled={bloomEnabled}
+                    setBloomEnabled={setBloomEnabled}
+                    orbitRingsEnabled={orbitRingsEnabled}
+                    setOrbitRingsEnabled={setOrbitRingsEnabled}
+                    orbitLinesEnabled={orbitLinesEnabled}
+                    setOrbitLinesEnabled={setOrbitLinesEnabled}
+                    planetLabelsEnabled={planetLabelsEnabled}
+                    setPlanetLabelsEnabled={setPlanetLabelsEnabled}
+                    habitableZoneEnabled={habitableZoneEnabled}
+                    setHabitableZoneEnabled={setHabitableZoneEnabled}
+                    timeScale={timeScale}
+                    setTimeScale={setTimeScale}
+                    sfxEnabled={sfxEnabled}
+                    setSfxEnabled={setSfxEnabled}
+                    asteroidBeltEnabled={asteroidBeltEnabled}
+                    setAsteroidBeltEnabled={setAsteroidBeltEnabled}
+                    atmospheresEnabled={atmospheresEnabled}
+                    setAtmospheresEnabled={setAtmospheresEnabled}
+                />
+            </aside>
 
             <PlanetMenu
                 selectedPlanet={selectedPlanet}
@@ -163,6 +368,7 @@ const SolarSystem = () => {
                 setFocusedTarget={setFocusedTarget}
                 toggleCameraRotation={toggleCameraRotation}
                 isCameraRotationEnabled={isCameraRotationEnabled}
+                sfxEnabled={sfxEnabled}
             />
 
             <Loader />
@@ -170,13 +376,7 @@ const SolarSystem = () => {
     );
 };
 
-const PanoramaBackground = ({
-    texturePath,
-    driftSpeed = 0.0,
-}: {
-    texturePath: string;
-    driftSpeed?: number;
-}) => {
+const PanoramaBackground = ({ texturePath, driftSpeed = 0.0 }: { texturePath: string; driftSpeed?: number }) => {
     const texture = useTextureDrei(texturePath);
     const { scene } = useThree();
 
@@ -184,8 +384,8 @@ const PanoramaBackground = ({
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.center.set(0.5, 0.5);
-
         texture.needsUpdate = true;
+
         scene.background = texture;
         scene.backgroundIntensity = 0.38;
 
@@ -198,8 +398,8 @@ const PanoramaBackground = ({
     }, [scene, texture]);
 
     useFrame((_, delta) => {
-        if (driftSpeed <= 0) return;
-        texture.rotation += driftSpeed * delta;
+        scene.backgroundIntensity = 0.38;
+        if (driftSpeed > 0) texture.rotation += driftSpeed * delta;
     });
 
     return null;
@@ -232,12 +432,7 @@ const GalacticDustPlane = ({ outermostOrbit }: { outermostOrbit: number }) => {
     });
 
     return (
-        <mesh
-            ref={planeRef}
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, -outermostOrbit * 0.35, 0]}
-            renderOrder={-10}
-        >
+        <mesh ref={planeRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -outermostOrbit * 0.35, 0]} renderOrder={-10}>
             <planeGeometry args={[size, size, 1, 1]} />
             <meshBasicMaterial
                 map={tex}
@@ -326,8 +521,7 @@ const CameraController = ({
         else tmpOffset.copy(camera.position).sub(tmpTarget);
 
         let distance = tmpOffset.length();
-        const minDistance =
-            focusedTarget.type === 'sun' ? 140 : Math.max(10, getPlanetRadius(focusedTarget.name) * 6.0);
+        const minDistance = focusedTarget.type === 'sun' ? 140 : Math.max(10, getPlanetRadius(focusedTarget.name) * 6.0);
 
         distance = THREE.MathUtils.clamp(distance, minDistance, MAX_CAMERA_DISTANCE);
 
@@ -354,6 +548,14 @@ const SolarSystemScene = ({
     selectedPlanet,
     focusedTarget,
     onPlanetPosition,
+    orbitRingsEnabled,
+    orbitLinesEnabled,
+    planetLabelsEnabled,
+    habitableZoneEnabled,
+    timeScale,
+    ambientEnabled,
+    asteroidBeltEnabled,
+    atmospheresEnabled,
 }: {
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
@@ -361,11 +563,20 @@ const SolarSystemScene = ({
     selectedPlanet: string | null;
     focusedTarget: FocusTarget;
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
+    orbitRingsEnabled: boolean;
+    orbitLinesEnabled: boolean;
+    planetLabelsEnabled: boolean;
+    habitableZoneEnabled: boolean;
+    timeScale: number;
+    ambientEnabled: boolean;
+    asteroidBeltEnabled: boolean;
+    atmospheresEnabled: boolean;
 }) => {
     const sunRef = useRef<THREE.Group>(null);
     const sunMatRef = useRef<THREE.MeshStandardMaterial>(null);
     const coronaMatRef = useRef<THREE.MeshBasicMaterial>(null);
     const haloMatRef = useRef<THREE.MeshBasicMaterial>(null);
+    const sunAudioRef = useRef<PositionalAudioImpl | null>(null);
 
     useFrame(({ clock }) => {
         if (sunRef.current) sunRef.current.rotation.y += 0.002;
@@ -378,6 +589,30 @@ const SolarSystemScene = ({
         if (coronaMatRef.current) coronaMatRef.current.opacity = 0.14 * breathe;
         if (haloMatRef.current) haloMatRef.current.opacity = 0.08 * breathe;
     });
+
+    const orbitRadii = useMemo(() => {
+        return PLANETS.map((p) => ({
+            name: p.name,
+            radius: mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance),
+        }));
+    }, []);
+
+    const belt = useMemo(() => {
+        const inner = mapOrbitFromAvgDistance(AU_MILLION_KM * 2.2);
+        const outer = mapOrbitFromAvgDistance(AU_MILLION_KM * 3.2);
+        return { inner, outer };
+    }, []);
+
+    useEffect(() => {
+        if (!ambientEnabled) return;
+        const a = sunAudioRef.current;
+        if (!a) return;
+
+        a.setVolume(0.22);
+        a.setRefDistance(120);
+        a.setRolloffFactor(1.6);
+        a.setDistanceModel('exponential');
+    }, [ambientEnabled]);
 
     return (
         <>
@@ -400,6 +635,7 @@ const SolarSystemScene = ({
                         ref={coronaMatRef}
                         color="#ffd27a"
                         transparent
+                        toneMapped={false}
                         opacity={0.14}
                         blending={THREE.AdditiveBlending}
                         depthWrite={false}
@@ -413,21 +649,37 @@ const SolarSystemScene = ({
                         color="#fff2c6"
                         transparent
                         opacity={0.08}
-                        blending={THREE.AdditiveBlending}
+                        blending={THREE.NormalBlending}
                         depthWrite={false}
                     />
                 </mesh>
+
+                {ambientEnabled && (
+                    <PositionalAudio ref={sunAudioRef} url="/sfx/sun-hiss.mp3" distance={650} loop autoplay />
+                )}
             </group>
 
-            {PLANETS.map((p) => {
-                const orbit = mapOrbitFromAvgDistance((p as any).avgDistanceFromSun, p.distance);
-                return (
-                    <mesh key={`${p.name}-orbit`} rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[orbit - 0.2, orbit + 0.2, 128]} />
-                        <meshBasicMaterial color="#333" side={THREE.DoubleSide} transparent opacity={0.35} />
+            {habitableZoneEnabled && <HabitableZone />}
+
+            {asteroidBeltEnabled && <AsteroidBelt inner={belt.inner} outer={belt.outer} count={2200} ySpread={belt.inner * 0.004} />}
+
+            {orbitRingsEnabled &&
+                orbitRadii.map(({ name, radius }) => (
+                    <mesh key={`${name}-orbitRing`} rotation={[-Math.PI / 2, 0, 0]} position={[0, ORBIT_Y_LIFT, 0]} renderOrder={-1}>
+                        <ringGeometry args={[radius - ORBIT_RING_HALF_WIDTH, radius + ORBIT_RING_HALF_WIDTH, 256]} />
+                        <meshBasicMaterial
+                            color="#b9c1cc"
+                            side={THREE.DoubleSide}
+                            transparent
+                            opacity={0.18}
+                            depthWrite={false}
+                            blending={THREE.AdditiveBlending}
+                            toneMapped={false}
+                        />
                     </mesh>
-                );
-            })}
+                ))}
+
+            {orbitLinesEnabled && orbitRadii.map(({ name, radius }) => <OrbitLine key={`${name}-orbitLine`} radius={radius} opacity={0.25} />)}
 
             {PLANETS.map((p) => (
                 <Planet
@@ -443,6 +695,9 @@ const SolarSystemScene = ({
                     onPlanetPosition={onPlanetPosition}
                     angle={(p as any).angle}
                     hasRings={(p as any).hasRings}
+                    planetLabelsEnabled={planetLabelsEnabled}
+                    timeScale={timeScale}
+                    atmospheresEnabled={atmospheresEnabled}
                 />
             ))}
         </>
@@ -469,6 +724,9 @@ const Planet = ({
     selectedPlanet,
     focusedTarget,
     onPlanetPosition,
+    planetLabelsEnabled,
+    timeScale,
+    atmospheresEnabled,
 }: PlanetProps & {
     setSelectedPlanet: (planetName: string | null) => void;
     setFocusedTarget: React.Dispatch<React.SetStateAction<FocusTarget>>;
@@ -478,6 +736,9 @@ const Planet = ({
     onPlanetPosition: (name: string, pos: THREE.Vector3) => void;
     angle?: number;
     hasRings?: boolean;
+    planetLabelsEnabled: boolean;
+    timeScale: number;
+    atmospheresEnabled: boolean;
 }) => {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef = useRef<THREE.Mesh>(null);
@@ -495,7 +756,7 @@ const Planet = ({
         if (!g) return;
 
         if (isCameraRotationEnabled) {
-            const t = clock.getElapsedTime() * TIME_SCALE * speed;
+            const t = clock.getElapsedTime() * timeScale * speed;
             const { x, z } = calculateOrbitPosition(t, distance);
 
             const tilt = THREE.MathUtils.degToRad(angle ?? 0);
@@ -513,9 +774,12 @@ const Planet = ({
     const handleClick = () => {
         setSelectedPlanet(name);
         setFocusedTarget({ type: 'planet', name });
+        try {
+            window.localStorage.setItem('ov_last_focus', name);
+        } catch { }
     };
 
-    const scale = isFocused ? 1.35 : isSelected ? 1.25 : hovered ? 1.12 : 1;
+    const scale = isFocused ? 1.18 : isSelected ? 1.12 : hovered ? 1.06 : 1;
     const trailLength = 10;
     const trailWidth = Math.max(0.08, radius * 0.08);
 
@@ -533,45 +797,36 @@ const Planet = ({
             }}
             scale={scale}
         >
-            {/* Orbit trail + planet */}
-            <Trail
-                width={trailWidth}
-                length={trailLength}
-                color={color ?? '#ffffff'}
-                attenuation={(t) => t * t}
-                decay={1}
-                local={false}
-            >
+            <Trail width={trailWidth} length={trailLength} color={color ?? '#ffffff'} attenuation={(t) => t * t} decay={1} local={false}>
                 <mesh ref={meshRef} castShadow receiveShadow>
                     <sphereGeometry args={[radius, 64, 64]} />
                     <meshStandardMaterial
                         map={planetTexture || null}
                         color={color || 'white'}
-                        emissive={isFocused ? 'white' : color || 'white'}
-                        emissiveIntensity={isFocused ? 0.65 : 0.08}
+                        emissive="#000000"
+                        emissiveIntensity={0}
                         roughness={1}
                         metalness={0}
                     />
                 </mesh>
             </Trail>
 
-            {/* ✅ Jupiter atmosphere glow */}
             {name === 'Jupiter' && <JupiterAtmosphere radius={radius} />}
-
-            {/* ✅ Saturn rings (real ring mesh) */}
             {hasRings && <SaturnRings planetRadius={radius} />}
 
-            {/* ✅ 3D hover tooltip */}
-            {hovered && <PlanetTooltip name={name} radius={radius} color={color} />}
-            {/* Earth moon stays (your existing) */}
+            {atmospheresEnabled && name === 'Earth' && <AtmosphereShell radius={radius} color="#66c7ff" opacity={0.08} scale={1.035} />}
+            {atmospheresEnabled && name === 'Venus' && <AtmosphereShell radius={radius} color="#ffd7a6" opacity={0.06} scale={1.04} pulse={0.02} />}
+            {atmospheresEnabled && name === 'Mars' && <AtmosphereShell radius={radius} color="#ffb199" opacity={0.03} scale={1.03} pulse={0.02} />}
+
+            {planetLabelsEnabled && <PlanetLabel name={name} radius={radius} color={color} />}
+
             {name === 'Earth' && <EarthMoon earthRadius={radius} />}
         </group>
     );
 };
 
-/**
- * ✅ Saturn rings: ringGeometry + procedural band texture + slight tilt
- */
+// ---------- existing helper components below (unchanged) ----------
+
 const SaturnRings = ({ planetRadius }: { planetRadius: number }) => {
     const tex = useMemo(() => createSaturnRingsTexture(1024), []);
     const inner = planetRadius * 1.35;
@@ -580,14 +835,7 @@ const SaturnRings = ({ planetRadius }: { planetRadius: number }) => {
     return (
         <mesh rotation={[THREE.MathUtils.degToRad(78), 0, 0]} renderOrder={2}>
             <ringGeometry args={[inner, outer, 256, 1]} />
-            <meshBasicMaterial
-                map={tex}
-                transparent
-                opacity={0.9}
-                side={THREE.DoubleSide}
-                depthWrite={false}
-                blending={THREE.NormalBlending}
-            />
+            <meshBasicMaterial map={tex} transparent opacity={0.9} side={THREE.DoubleSide} depthWrite={false} blending={THREE.NormalBlending} />
         </mesh>
     );
 };
@@ -603,10 +851,7 @@ function createSaturnRingsTexture(size = 512) {
         return fallback;
     }
 
-    // horizontal band gradient (we'll sample it radially via UVs in ring)
     const g = ctx.createLinearGradient(0, 0, size, 0);
-
-    // dark -> bright -> dark bands
     g.addColorStop(0.0, 'rgba(130,110,85,0)');
     g.addColorStop(0.08, 'rgba(170,150,120,0.25)');
     g.addColorStop(0.18, 'rgba(210,190,160,0.55)');
@@ -619,7 +864,6 @@ function createSaturnRingsTexture(size = 512) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, canvas.height);
 
-    // add some subtle noise specks
     const img = ctx.getImageData(0, 0, size, canvas.height);
     const data = img.data;
     for (let i = 0; i < data.length; i += 4) {
@@ -638,9 +882,6 @@ function createSaturnRingsTexture(size = 512) {
     return tex;
 }
 
-/**
- * ✅ Jupiter atmosphere: additive halo that softly breathes
- */
 const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     const matRef = useRef<THREE.MeshBasicMaterial>(null);
 
@@ -653,33 +894,41 @@ const JupiterAtmosphere = ({ radius }: { radius: number }) => {
     return (
         <mesh renderOrder={1}>
             <sphereGeometry args={[radius * 1.07, 48, 48]} />
-            <meshBasicMaterial
-                ref={matRef}
-                color="#ffe0b6"
-                transparent
-                opacity={0.12}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-            />
+            <meshBasicMaterial ref={matRef} color="#ffe0b6" transparent opacity={0.12} blending={THREE.AdditiveBlending} depthWrite={false} />
         </mesh>
     );
 };
 
-/**
- * ✅ 3D Hover tooltip: billboarded label + small backing plate
- */
-const PlanetTooltip = ({ name, radius, color }: { name: string; radius: number; color?: string }) => {
-    const plateRef = useRef<THREE.Mesh>(null);
+const PlanetLabel = ({ name, radius, color }: { name: string; radius: number; color?: string }) => {
+    const groupRef = useRef<THREE.Group>(null);
+    const { camera } = useThree();
+
+    const BASE = 0.012;
+    const MIN = 0.9;
+    const MAX = 6.0;
+
+    const tmpPos = useMemo(() => new THREE.Vector3(), []);
+    const tmpCam = useMemo(() => new THREE.Vector3(), []);
+
+    useFrame(() => {
+        const g = groupRef.current;
+        if (!g) return;
+
+        g.getWorldPosition(tmpPos);
+        camera.getWorldPosition(tmpCam);
+
+        const d = tmpPos.distanceTo(tmpCam);
+        const s = THREE.MathUtils.clamp(d * BASE, MIN, MAX);
+        g.scale.setScalar(s);
+    });
 
     return (
-        <Billboard position={[0, radius * 1.75, 0]} follow={true} lockX={false} lockY={false} lockZ={false}>
-            {/* backing plate */}
-            <mesh ref={plateRef} renderOrder={10}>
+        <Billboard ref={groupRef} position={[0, radius * 1.85, 0]} follow lockX={false} lockY={false} lockZ={false}>
+            <mesh renderOrder={10}>
                 <planeGeometry args={[2.6, 0.9]} />
                 <meshBasicMaterial transparent opacity={0.32} color="#000000" depthWrite={false} />
             </mesh>
 
-            {/* text */}
             <Text
                 position={[0, 0, 0.01]}
                 fontSize={0.35}
@@ -717,5 +966,108 @@ const EarthMoon = ({ earthRadius }: { earthRadius: number }) => {
         </group>
     );
 };
+
+function GlobalAmbience({ enabled }: { enabled: boolean }) {
+    const audioRef = useRef<THREE.Audio | null>(null);
+    const listenerRef = useRef<THREE.AudioListener | null>(null);
+    const startedRef = useRef(false);
+    const { camera } = useThree();
+
+    useEffect(() => {
+        const listener = new THREE.AudioListener();
+        listenerRef.current = listener;
+        camera.add(listener);
+
+        const audio = new THREE.Audio(listener);
+        audioRef.current = audio;
+
+        const loader = new THREE.AudioLoader();
+        loader.load(
+            '/sfx/space-ambience.mp3',
+            (buffer) => {
+                audio.setBuffer(buffer);
+                audio.setLoop(true);
+
+                // --- silent start values ---
+                const TARGET = 0.16;      // your normal bed volume
+                const STEP = 0.01;        // fade step
+                const INTERVAL = 40;      // ms between steps
+
+                audio.setVolume(0);       // start silent
+
+                // Don't force-play here (autoplay may be blocked).
+                // Start will happen from startIfAllowed() on first gesture.
+                // When startIfAllowed() plays it, we fade in.
+                (audio as any).__fadeTarget = TARGET;
+                (audio as any).__fadeStep = STEP;
+                (audio as any).__fadeInterval = INTERVAL;
+            },
+            undefined,
+            (err) => console.warn('Ambience load failed', err),
+        );
+
+
+        const startIfAllowed = () => {
+            if (!audio.buffer || audio.isPlaying || !enabled) return;
+
+            try {
+                audio.play();
+                startedRef.current = true;
+
+                // --- fade in after play succeeds ---
+                const target = (audio as any).__fadeTarget ?? 0.16;
+                const step = (audio as any).__fadeStep ?? 0.01;
+                const interval = (audio as any).__fadeInterval ?? 40;
+
+                let v = audio.getVolume?.() ?? 0; // three has getVolume in newer versions, but safe fallback
+                // if no getVolume, we just track v manually
+                if (typeof v !== 'number') v = 0;
+
+                const fadeId = window.setInterval(() => {
+                    v = Math.min(target, v + step);
+                    audio.setVolume(v);
+                    if (v >= target) window.clearInterval(fadeId);
+                }, interval);
+            } catch { }
+        };
+
+        // 🔑 first user gesture unlocks audio
+        window.addEventListener('pointerdown', startIfAllowed);
+        window.addEventListener('keydown', startIfAllowed);
+
+        return () => {
+            window.removeEventListener('pointerdown', startIfAllowed);
+            window.removeEventListener('keydown', startIfAllowed);
+
+            try {
+                audio.stop();
+            } catch { }
+
+            camera.remove(listener);
+            audioRef.current = null;
+            listenerRef.current = null;
+        };
+    }, [camera]);
+
+    // React to toggle
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio || !audio.buffer) return;
+
+        if (enabled) {
+            if (!audio.isPlaying && startedRef.current) {
+                try {
+                    audio.play();
+                } catch { }
+            }
+        } else {
+            try {
+                audio.stop();
+            } catch { }
+        }
+    }, [enabled]);
+
+    return null;
+}
 
 export default SolarSystem;
