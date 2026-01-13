@@ -970,11 +970,10 @@ const EarthMoon = ({ earthRadius }: { earthRadius: number }) => {
 function GlobalAmbience({ enabled }: { enabled: boolean }) {
     const audioRef = useRef<THREE.Audio | null>(null);
     const listenerRef = useRef<THREE.AudioListener | null>(null);
+    const startedRef = useRef(false);
     const { camera } = useThree();
 
     useEffect(() => {
-        if (!enabled) return;
-
         const listener = new THREE.AudioListener();
         listenerRef.current = listener;
         camera.add(listener);
@@ -988,35 +987,85 @@ function GlobalAmbience({ enabled }: { enabled: boolean }) {
             (buffer) => {
                 audio.setBuffer(buffer);
                 audio.setLoop(true);
-                audio.setVolume(0.16);
-                try {
-                    audio.play();
-                } catch { }
+
+                // --- silent start values ---
+                const TARGET = 0.16;      // your normal bed volume
+                const STEP = 0.01;        // fade step
+                const INTERVAL = 40;      // ms between steps
+
+                audio.setVolume(0);       // start silent
+
+                // Don't force-play here (autoplay may be blocked).
+                // Start will happen from startIfAllowed() on first gesture.
+                // When startIfAllowed() plays it, we fade in.
+                (audio as any).__fadeTarget = TARGET;
+                (audio as any).__fadeStep = STEP;
+                (audio as any).__fadeInterval = INTERVAL;
             },
             undefined,
-            () => { },
+            (err) => console.warn('Ambience load failed', err),
         );
 
-        const tryStart = () => {
-            if (!audio.isPlaying && audio.buffer) {
+
+        const startIfAllowed = () => {
+            if (!audio.buffer || audio.isPlaying || !enabled) return;
+
+            try {
+                audio.play();
+                startedRef.current = true;
+
+                // --- fade in after play succeeds ---
+                const target = (audio as any).__fadeTarget ?? 0.16;
+                const step = (audio as any).__fadeStep ?? 0.01;
+                const interval = (audio as any).__fadeInterval ?? 40;
+
+                let v = audio.getVolume?.() ?? 0; // three has getVolume in newer versions, but safe fallback
+                // if no getVolume, we just track v manually
+                if (typeof v !== 'number') v = 0;
+
+                const fadeId = window.setInterval(() => {
+                    v = Math.min(target, v + step);
+                    audio.setVolume(v);
+                    if (v >= target) window.clearInterval(fadeId);
+                }, interval);
+            } catch { }
+        };
+
+        // 🔑 first user gesture unlocks audio
+        window.addEventListener('pointerdown', startIfAllowed);
+        window.addEventListener('keydown', startIfAllowed);
+
+        return () => {
+            window.removeEventListener('pointerdown', startIfAllowed);
+            window.removeEventListener('keydown', startIfAllowed);
+
+            try {
+                audio.stop();
+            } catch { }
+
+            camera.remove(listener);
+            audioRef.current = null;
+            listenerRef.current = null;
+        };
+    }, [camera]);
+
+    // React to toggle
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio || !audio.buffer) return;
+
+        if (enabled) {
+            if (!audio.isPlaying && startedRef.current) {
                 try {
                     audio.play();
                 } catch { }
             }
-        };
-
-        window.addEventListener('pointerdown', tryStart, { once: true });
-
-        return () => {
-            window.removeEventListener('pointerdown', tryStart);
+        } else {
             try {
                 audio.stop();
             } catch { }
-            camera.remove(listener);
-            listenerRef.current = null;
-            audioRef.current = null;
-        };
-    }, [enabled, camera]);
+        }
+    }, [enabled]);
 
     return null;
 }
